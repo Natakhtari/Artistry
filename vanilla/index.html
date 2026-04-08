@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artistry - Creative Community Platform</title>
+  
+  <!-- Tailwind CSS via CDN with custom config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'primary': '#F25C54',
+            'primary-hover': '#D93830',
+            'coral': {
+              DEFAULT: '#F25C54',
+              dark: '#D93830',
+              light: '#FF7B73'
+            }
+          },
+          backgroundColor: {
+            'primary': '#F25C54',
+            'primary-hover': '#D93830'
+          },
+          textColor: {
+            'primary': '#F25C54'
+          },
+          borderColor: {
+            'primary': '#F25C54'
+          }
+        }
+      },
+      safelist: [
+        'bg-primary',
+        'bg-primary-hover',
+        'hover:bg-primary',
+        'hover:bg-primary-hover',
+        'text-primary',
+        'hover:text-primary',
+        'border-primary',
+        'focus:border-primary',
+        'ring-primary',
+        'focus:ring-primary'
+      ]
+    }
+  </script>
+  
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Debug Script -->
+  <script>
+    console.log('HTML loaded');
+    window.addEventListener('error', (e) => {
+      console.error('Error:', e.message, e.filename, e.lineno, e.colno, e.error);
+    });
+  </script>
+</head>
+<body class="text-white" style="background-color: #0F172A;">
+  <!-- App Container -->
+  <div id="app">
+    <!-- Loading indicator -->
+    <div class="flex items-center justify-center min-h-screen" id="loading">
+      <div class="text-center">
+        <div class="spinner mx-auto mb-4"></div>
+        <p style="color: #94A3B8;">Loading Artistry...</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Main App Script (ES6 Module) -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
