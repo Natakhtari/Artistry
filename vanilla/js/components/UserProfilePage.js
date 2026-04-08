@@ -46,6 +46,10 @@ export class UserProfilePage extends Component {
     return users[username] || users['elena-rodriguez'];
   }
 
+  getSeoContext() {
+    return { profileName: this.user?.name || '' };
+  }
+
   render() {
     const container = this.createElement('div', {
       className:
@@ -108,7 +112,7 @@ export class UserProfilePage extends Component {
 
     const avatar = this.createElement('img', {
       src: user.avatar,
-      alt: user.name,
+      alt: `Profile photo of ${user.name}, Artistry portfolio`,
       className: 'w-full h-full object-cover'
     });
 
@@ -256,14 +260,14 @@ export class UserProfilePage extends Component {
       'https://cdn.pixabay.com/photo/2017/08/10/08/47/laptop-2620118_960_720.jpg'
     ];
 
-    artworks.forEach((src) => {
+    artworks.forEach((src, index) => {
       const card = this.createElement('div', {
         className: 'aspect-square bg-slate-800 rounded-xl overflow-hidden cursor-pointer hover:scale-105 transition-all'
       });
 
       const image = this.createElement('img', {
         src,
-        alt: 'Artwork',
+        alt: `Portfolio artwork ${index + 1} by ${this.user.name} on Artistry`,
         className: 'w-full h-full object-cover'
       });
 

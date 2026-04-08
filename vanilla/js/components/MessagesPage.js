@@ -140,6 +140,13 @@ export class MessagesPage extends Component {
     return container;
   }
 
+  getSeoContext() {
+    if (this.selectedChat?.user) {
+      return { chatWith: this.selectedChat.user };
+    }
+    return {};
+  }
+
   afterRender() {
     if (this.chatIdParam != null && !this.selectedChat) {
       router.navigate('/messages', true);
@@ -220,7 +227,7 @@ export class MessagesPage extends Component {
 
     const avatarImg = this.createElement('img', {
       src: conv.avatar,
-      alt: conv.user,
+      alt: `Avatar of ${conv.user}, Artistry message thread`,
       className: 'w-full h-full object-cover'
     });
 
@@ -335,7 +342,7 @@ export class MessagesPage extends Component {
 
     const avatarImg = this.createElement('img', {
       src: chat.avatar,
-      alt: chat.user,
+      alt: `Profile photo of ${chat.user}, active Artistry chat`,
       className: 'w-full h-full object-cover'
     });
 

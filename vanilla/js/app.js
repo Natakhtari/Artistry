@@ -1,6 +1,7 @@
 // Main Application Entry Point
 import { router } from './router.js';
 import { stateManager } from './utils/state.js';
+import { applyRouteSeo } from './utils/seo.js';
 import { Navigation } from './components/Navigation.js';
 import { LandingPage } from './components/LandingPage.js';
 import { FeedPage } from './components/FeedPage.js';
@@ -180,8 +181,15 @@ class App {
         this.navigation.afterRender();
       }
 
+      const routePath = router.getCurrentRoute();
+      const seoCtx =
+        this.currentPage && typeof this.currentPage.getSeoContext === 'function'
+          ? this.currentPage.getSeoContext()
+          : {};
+      applyRouteSeo(routePath, seoCtx);
+
       // Update router state
-      stateManager.setState({ currentRoute: router.getCurrentRoute() });
+      stateManager.setState({ currentRoute: routePath });
       console.log('Page render complete!');
       console.log('Wrapper children:', wrapper.children.length);
     } catch (error) {

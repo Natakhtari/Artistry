@@ -18,11 +18,11 @@ export class NewsPage extends Component {
 
     const title = this.createElement('h1', {
       className: 'text-2xl md:text-3xl font-bold leading-tight'
-    }, 'Art News & Articles');
+    }, 'Artistry News & Creator Resources');
 
     const subtitle = this.createElement('p', {
       className: 'text-slate-400 text-xs md:text-sm mt-0.5 md:mt-1 leading-snug'
-    }, 'Latest from the art world');
+    }, 'Portfolio tips, pricing commissions, and art industry news.');
 
     header.appendChild(title);
     header.appendChild(subtitle);
@@ -117,7 +117,7 @@ export class NewsPage extends Component {
 
     const image = this.createElement('img', {
       src: article.image,
-      alt: article.title,
+      alt: `${article.title} — ${article.category} article, Artistry news`,
       className: 'w-full h-full object-cover group-hover:scale-110 transition-transform duration-300'
     });
 

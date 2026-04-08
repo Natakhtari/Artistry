@@ -234,11 +234,11 @@ export class FeedPage extends Component {
 
     const title = this.createElement('h1', {
       className: 'text-2xl md:text-3xl font-bold leading-tight'
-    }, 'Discover');
+    }, 'Explore Top Visual Artists & Portfolios');
 
     const subtitle = this.createElement('p', {
       className: 'text-slate-400 text-xs md:text-sm mt-0.5 md:mt-1 leading-snug max-md:line-clamp-2'
-    }, 'Art, video, podcasts & articles from creators — scroll for more.');
+    }, 'Discover digital art, 3D, and illustration portfolios — scroll for more.');
 
     header.appendChild(title);
     header.appendChild(subtitle);
@@ -312,9 +312,10 @@ export class FeedPage extends Component {
     imageContainer.addEventListener('click', () => this.openContent(item));
 
     const imageUrl = item.image || item.thumbnail || item.cover;
+    const typeLabel = item.type === 'artwork' ? 'artwork' : item.type;
     const image = this.createElement('img', {
       src: imageUrl,
-      alt: item.title,
+      alt: `${item.title} — ${typeLabel} by ${item.artist} on Artistry`,
       className: 'w-full h-full object-cover'
     });
 
@@ -364,7 +365,7 @@ export class FeedPage extends Component {
 
     const avatar = this.createElement('img', {
       src: item.avatar,
-      alt: item.artist,
+      alt: `Profile photo of ${item.artist}, artist on Artistry`,
       className: 'w-full h-full object-cover'
     });
 

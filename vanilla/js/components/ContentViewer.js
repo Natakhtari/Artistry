@@ -92,7 +92,7 @@ export class ContentViewer extends Component {
 
     const video = this.createElement('img', {
       src: this.data.thumbnail,
-      alt: this.data.title,
+      alt: `Video thumbnail: ${this.data.title} by ${this.data.artist} on Artistry`,
       className: 'w-full h-full object-cover'
     });
 
@@ -129,6 +129,7 @@ export class ContentViewer extends Component {
     });
     const avatarImg = this.createElement('img', {
       src: this.data.avatar,
+      alt: `Profile photo of ${this.data.artist}`,
       className: 'w-full h-full object-cover'
     });
     avatar.appendChild(avatarImg);
@@ -170,6 +171,7 @@ export class ContentViewer extends Component {
     });
     const coverImg = this.createElement('img', {
       src: this.data.cover,
+      alt: `Podcast cover: ${this.data.title} by ${this.data.artist} on Artistry`,
       className: 'w-full h-full object-cover'
     });
     cover.appendChild(coverImg);
@@ -221,6 +223,7 @@ export class ContentViewer extends Component {
     });
     const heroImg = this.createElement('img', {
       src: this.data.thumbnail,
+      alt: `Featured image for article “${this.data.title}” by ${this.data.artist} on Artistry`,
       className: 'w-full h-full object-cover'
     });
     hero.appendChild(heroImg);
@@ -243,6 +246,7 @@ export class ContentViewer extends Component {
     });
     const avatarImg = this.createElement('img', {
       src: this.data.avatar,
+      alt: `Author photo: ${this.data.artist}`,
       className: 'w-full h-full object-cover'
     });
     avatar.appendChild(avatarImg);

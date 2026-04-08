@@ -36,15 +36,24 @@ export class AuthPage extends Component {
 
     const title = this.createElement('h1', {
       className: 'text-2xl font-bold mb-2'
-    }, this.mode === 'signin' ? 'Welcome Back' : this.mode === 'signup' ? 'Create Account' : 'Reset Password');
+    }, 'Join the Artist Community');
 
     const subtitle = this.createElement('p', {
       className: 'text-slate-400'
-    }, this.mode === 'signin' ? 'Sign in to continue' : this.mode === 'signup' ? 'Join the creative community' : 'Enter your email to reset');
+    }, this.mode === 'signin'
+      ? 'Sign in to your free art portfolio'
+      : this.mode === 'signup'
+        ? 'Create your free, ad-free digital art portfolio'
+        : 'Enter your email to reset your password');
+
+    const modeLabel = this.createElement('p', {
+      className: 'text-sm font-semibold text-primary mt-3'
+    }, this.mode === 'signin' ? 'Sign in' : this.mode === 'signup' ? 'Create account' : 'Reset password');
 
     header.appendChild(logo);
     header.appendChild(title);
     header.appendChild(subtitle);
+    header.appendChild(modeLabel);
 
     // Form
     const form = this.createForm();

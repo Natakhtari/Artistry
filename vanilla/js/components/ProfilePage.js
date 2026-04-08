@@ -58,7 +58,7 @@ export class ProfilePage extends Component {
 
     const avatar = this.createElement('img', {
       src: user.avatar,
-      alt: user.name,
+      alt: `Profile photo of ${user.name}, Artistry creator`,
       className: 'w-full h-full object-cover'
     });
 
@@ -235,9 +235,10 @@ export class ProfilePage extends Component {
         isLiked: false
       }));
 
+      const artistName = stateManager.getState().currentUser.name;
       const image = this.createElement('img', {
         src: artwork.image,
-        alt: artwork.title,
+        alt: `${artwork.title} — portfolio artwork by ${artistName} on Artistry`,
         className: 'w-full h-full object-cover'
       });
 

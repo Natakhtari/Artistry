@@ -81,7 +81,7 @@ export class ArtworkLightbox extends Component {
 
     const image = this.createElement('img', {
       src: this.artwork.image,
-      alt: this.artwork.title,
+      alt: `${this.artwork.title} — digital artwork by ${this.artwork.artist} on Artistry`,
       className: 'max-h-full max-w-full w-full object-contain rounded-2xl shadow-2xl'
     });
 
@@ -120,7 +120,7 @@ export class ArtworkLightbox extends Component {
 
     const avatar = this.createElement('img', {
       src: this.artwork.avatar,
-      alt: this.artwork.artist,
+      alt: `Profile photo of ${this.artwork.artist}`,
       className: 'w-full h-full object-cover'
     });
 
@@ -255,7 +255,7 @@ export class ArtworkLightbox extends Component {
 
     const avatar = this.createElement('img', {
       src: comment.avatar,
-      alt: comment.user,
+      alt: `${comment.user}, commenter on Artistry`,
       className: 'w-full h-full object-cover'
     });
 

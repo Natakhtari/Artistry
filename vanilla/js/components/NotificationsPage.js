@@ -95,7 +95,7 @@ export class NotificationsPage extends Component {
 
     const avatar = this.createElement('img', {
       src: notif.avatar,
-      alt: notif.user,
+      alt: `${notif.user}, Artistry notification`,
       className: 'w-full h-full object-cover'
     });
 

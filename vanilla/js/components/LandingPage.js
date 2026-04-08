@@ -38,12 +38,12 @@ export class LandingPage extends Component {
     });
 
     const title = this.createElement('h1', {
-      className: 'text-5xl md:text-7xl lg:text-8xl font-bold mb-6 gradient-text'
-    }, 'Welcome to Artistry');
+      className: 'text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold mb-6 gradient-text leading-tight'
+    }, 'The Narrative Portfolio Platform for Visual Artists');
 
     const subtitle = this.createElement('p', {
-      className: 'text-xl md:text-2xl text-slate-300 mb-12 max-w-3xl mx-auto'
-    }, 'Join the creative revolution. Share your art, discover inspiration, and connect with artists worldwide.');
+      className: 'text-lg md:text-2xl text-slate-300 mb-12 max-w-3xl mx-auto'
+    }, 'The best portfolio site for artists — ad-free, deep context, and discovery without the algorithm.');
 
     const buttonContainer = this.createElement('div', {
       className: 'flex flex-col sm:flex-row gap-4 justify-center items-center'
@@ -194,7 +194,7 @@ export class LandingPage extends Component {
 
       const avatar = this.createElement('img', {
         src: artist.avatar,
-        alt: artist.name,
+        alt: `${artist.name}, featured artist on Artistry — ${artist.followers} followers`,
         className: 'w-full h-full object-cover'
       });
 

@@ -15,7 +15,7 @@ export class SettingsPage extends Component {
 
     const title = this.createElement('h1', {
       className: 'text-2xl md:text-3xl font-bold mb-2 md:mb-4 leading-tight'
-    }, 'Settings');
+    }, 'Account Preferences & Billing');
 
     const settingsGroups = this.createElement('div', {
       className: 'space-y-6'
