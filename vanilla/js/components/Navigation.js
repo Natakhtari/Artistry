@@ -3,6 +3,9 @@ import { router } from '../router.js';
 import { stateManager } from '../utils/state.js';
 import { CreatePostModal } from './CreatePostModal.js';
 
+/** Viewport width at or above this uses top tabs (desktop). Below tablet max = hamburger. */
+const DESKTOP_MIN_WIDTH = 1280;
+
 export class Navigation extends Component {
   constructor() {
     super('app');
@@ -17,9 +20,8 @@ export class Navigation extends Component {
   getViewportMode() {
     const width = window.innerWidth || document.documentElement.clientWidth || 0;
     if (width < 768) return 'mobile';
-    // Keep hamburger visible on tablet landscape and zoomed tablet-like viewports.
-    if (width >= 2200) return 'desktop';
-    return 'tablet';
+    if (width < DESKTOP_MIN_WIDTH) return 'tablet';
+    return 'desktop';
   }
 
   getCurrentRoute() {
@@ -65,6 +67,7 @@ export class Navigation extends Component {
         desktopLinks.style.flex = '1 1 0%';
         desktopLinks.style.minWidth = '0';
         desktopLinks.style.marginLeft = '1rem';
+        desktopLinks.style.flexWrap = 'wrap';
       }
     }
 
@@ -184,7 +187,7 @@ export class Navigation extends Component {
     logoLink.appendChild(document.createTextNode('Artistry'));
 
     const navLinksDesktop = this.createElement('div', {
-      className: 'artistry-nav-desktop-links'
+      className: 'artistry-nav-desktop-links flex-wrap justify-end'
     });
     const navLinksMobile = this.createElement('div', {
       className: 'artistry-nav-mobile-links'

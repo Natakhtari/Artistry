@@ -5,7 +5,8 @@ import { router } from '../router.js';
 export class SettingsPage extends Component {
   render() {
     const container = this.createElement('div', {
-      className: 'min-h-screen pt-20 md:pt-24 pb-20 md:pb-8'
+      className:
+        'min-h-screen pb-16 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-20'
     });
 
     const contentContainer = this.createElement('div', {
@@ -13,7 +14,7 @@ export class SettingsPage extends Component {
     });
 
     const title = this.createElement('h1', {
-      className: 'text-3xl font-bold mb-8'
+      className: 'text-2xl md:text-3xl font-bold mb-2 md:mb-4 leading-tight'
     }, 'Settings');
 
     const settingsGroups = this.createElement('div', {

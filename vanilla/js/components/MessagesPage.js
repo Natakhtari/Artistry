@@ -79,22 +79,24 @@ export class MessagesPage extends Component {
     const mobile = this.isMobileViewport();
     const showList = !mobile || !this.selectedChat;
     const showChatPane = !mobile || !!this.selectedChat;
+    const fullscreen = !!this.selectedChat;
 
+    // Open conversation: fixed full-screen layer above nav (immersive chat)
     const container = this.createElement('div', {
-      className: 'min-h-screen pt-20 md:pt-24 pb-20 md:pb-8'
+      className: fullscreen
+        ? 'fixed inset-0 z-[10000] flex flex-col overflow-hidden bg-slate-950 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]'
+        : 'h-[100dvh] box-border flex flex-col overflow-hidden pb-16 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-20'
     });
 
     const contentContainer = this.createElement('div', {
-      className:
-        'max-w-7xl mx-auto px-3 md:px-6 flex flex-col ' +
-        (mobile && this.selectedChat
-          ? 'h-[calc(100vh-5.5rem)] min-h-[calc(100vh-5.5rem)]'
-          : 'h-[calc(100vh-160px)] md:h-[calc(100vh-120px)]')
+      className: fullscreen
+        ? 'flex-1 min-h-0 flex flex-col w-full min-w-0'
+        : 'flex-1 min-h-0 flex flex-col max-w-7xl mx-auto px-3 md:px-6 w-full'
     });
 
-    // Header (hide main title on mobile when viewing a chat — chat has its own header)
+    // Header only on list / empty state (not over full-screen chat)
     const header = this.createElement('div', {
-      className: mobile && this.selectedChat ? 'hidden' : 'mb-3 md:mb-4'
+      className: mobile && this.selectedChat ? 'hidden' : 'mb-2 md:mb-3'
     });
 
     const title = this.createElement('h1', {
@@ -110,11 +112,12 @@ export class MessagesPage extends Component {
       header.appendChild(hint);
     }
 
-    // Chat Interface: on mobile, either list OR full-screen chat (separate "page" feel)
     const chatContainer = this.createElement('div', {
-      className: `flex-1 bg-slate-800 overflow-hidden flex flex-col md:flex-row ${
-        mobile ? 'rounded-none md:rounded-2xl -mx-3 md:mx-0' : 'rounded-2xl'
-      }`
+      className: fullscreen
+        ? 'flex-1 min-h-0 min-w-0 bg-slate-800 overflow-hidden flex flex-col md:flex-row w-full'
+        : `flex-1 min-h-0 bg-slate-800 overflow-hidden flex flex-col md:flex-row ${
+            mobile ? 'rounded-none md:rounded-2xl -mx-3 md:mx-0' : 'rounded-2xl'
+          }`
     });
 
     if (showList) {
@@ -128,7 +131,7 @@ export class MessagesPage extends Component {
       chatContainer.appendChild(chatArea);
     }
 
-    if (!(mobile && this.selectedChat)) {
+    if (!fullscreen) {
       contentContainer.appendChild(header);
     }
     contentContainer.appendChild(chatContainer);
@@ -140,6 +143,16 @@ export class MessagesPage extends Component {
   afterRender() {
     if (this.chatIdParam != null && !this.selectedChat) {
       router.navigate('/messages', true);
+      return;
+    }
+    if (this.selectedChat) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    const messagesArea = document.getElementById('messages-area');
+    if (messagesArea) {
+      messagesArea.scrollTop = messagesArea.scrollHeight;
     }
   }
 
@@ -286,12 +299,13 @@ export class MessagesPage extends Component {
 
   createChatArea(chat, mobile = false) {
     const chatArea = this.createElement('div', {
-      className: 'flex-1 flex flex-col min-h-0 min-w-0'
+      className: 'flex-1 flex flex-col min-h-0 min-w-0 overflow-x-hidden'
     });
 
     // Chat Header
     const chatHeader = this.createElement('div', {
-      className: 'p-3 md:p-4 border-b border-slate-700 flex items-center justify-between gap-2 flex-shrink-0'
+      className:
+        'p-3 md:p-4 border-b border-slate-700 flex items-center justify-between gap-2 flex-shrink-0 min-w-0 overflow-hidden'
     });
 
     const headerLeft = this.createElement('div', {
@@ -316,7 +330,7 @@ export class MessagesPage extends Component {
     });
 
     const avatar = this.createElement('div', {
-      className: 'w-10 h-10 rounded-full overflow-hidden bg-slate-700'
+      className: 'w-10 h-10 rounded-full overflow-hidden bg-slate-700 flex-shrink-0'
     });
 
     const avatarImg = this.createElement('img', {
@@ -327,9 +341,11 @@ export class MessagesPage extends Component {
 
     avatar.appendChild(avatarImg);
 
-    const nameStatus = this.createElement('div');
+    const nameStatus = this.createElement('div', {
+      className: 'min-w-0 flex-1'
+    });
     const name = this.createElement('div', {
-      className: 'font-medium'
+      className: mobile ? 'font-medium truncate' : 'font-medium'
     }, chat.user);
 
     const status = this.createElement('div', {
@@ -374,9 +390,9 @@ export class MessagesPage extends Component {
       chatHeader.appendChild(actions);
     }
 
-    // Messages Area
+    // Messages Area — sole vertical scroll region in chat
     const messagesArea = this.createElement('div', {
-      className: 'flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar',
+      className: 'flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 custom-scrollbar',
       id: 'messages-area'
     });
 
@@ -387,17 +403,20 @@ export class MessagesPage extends Component {
       messagesArea.appendChild(msgElement);
     });
 
-    // Input Area
+    // Input Area — pinned below messages; does not scroll with thread
     const inputArea = this.createElement('div', {
-      className: 'p-4 border-t border-slate-700'
+      className: 'flex-shrink-0 p-2 sm:p-4 border-t border-slate-700 min-w-0 overflow-hidden'
     });
 
     const inputContainer = this.createElement('div', {
-      className: 'flex gap-2'
+      className: 'flex items-stretch gap-1 sm:gap-2 min-w-0 w-full max-w-full'
     });
 
     const attachBtn = this.createElement('button', {
-      className: 'p-3 hover:bg-slate-700 rounded-lg transition-colors flex-shrink-0'
+      type: 'button',
+      className:
+        'p-2 sm:p-3 hover:bg-slate-700 rounded-lg transition-colors flex-shrink-0 touch-manipulation',
+      'aria-label': 'Attach file'
     });
     const attachIcon = this.createIcon('paperclip', 'w-5 h-5');
     attachBtn.appendChild(attachIcon);
@@ -405,7 +424,8 @@ export class MessagesPage extends Component {
     const input = this.createElement('input', {
       type: 'text',
       placeholder: 'Type a message...',
-      className: 'flex-1 px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-primary transition-colors',
+      className:
+        'flex-1 min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-primary transition-colors text-sm sm:text-base',
       id: 'message-input'
     });
     input.addEventListener('keypress', (e) => {
@@ -413,14 +433,26 @@ export class MessagesPage extends Component {
     });
 
     const emojiBtn = this.createElement('button', {
-      className: 'p-3 hover:bg-slate-700 rounded-lg transition-colors flex-shrink-0'
+      type: 'button',
+      className:
+        'p-2 sm:p-3 hover:bg-slate-700 rounded-lg transition-colors flex-shrink-0 touch-manipulation',
+      'aria-label': 'Emoji'
     });
     const emojiIcon = this.createIcon('smile', 'w-5 h-5');
     emojiBtn.appendChild(emojiIcon);
 
     const sendBtn = this.createElement('button', {
-      className: 'px-6 py-3 bg-primary hover:bg-primary-hover rounded-lg transition-colors font-medium flex-shrink-0'
-    }, 'Send');
+      type: 'button',
+      className: mobile
+        ? 'p-2.5 sm:p-3 bg-primary hover:bg-primary-hover rounded-lg transition-colors flex-shrink-0 flex items-center justify-center touch-manipulation'
+        : 'px-6 py-3 bg-primary hover:bg-primary-hover rounded-lg transition-colors font-medium flex-shrink-0'
+    });
+    if (mobile) {
+      sendBtn.appendChild(this.createIcon('send', 'w-5 h-5'));
+      sendBtn.setAttribute('aria-label', 'Send');
+    } else {
+      sendBtn.appendChild(document.createTextNode('Send'));
+    }
     sendBtn.addEventListener('click', () => this.sendMessage());
 
     inputContainer.appendChild(attachBtn);
@@ -453,7 +485,7 @@ export class MessagesPage extends Component {
     });
 
     const bubble = this.createElement('div', {
-      className: `max-w-md px-4 py-3 rounded-2xl ${
+      className: `max-w-[85%] sm:max-w-md px-4 py-3 rounded-2xl ${
         isMe
           ? 'bg-primary text-white rounded-br-none'
           : 'bg-slate-700 text-white rounded-bl-none'
@@ -503,7 +535,7 @@ export class MessagesPage extends Component {
 
   createEmptyState() {
     const emptyState = this.createElement('div', {
-      className: 'flex-1 flex items-center justify-center p-6 min-h-[12rem] md:min-h-0'
+      className: 'flex-1 min-h-0 flex items-center justify-center p-6 overflow-hidden'
     });
 
     const content = this.createElement('div', {

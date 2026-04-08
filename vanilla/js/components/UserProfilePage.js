@@ -48,7 +48,8 @@ export class UserProfilePage extends Component {
 
   render() {
     const container = this.createElement('div', {
-      className: 'min-h-screen pt-20 md:pt-24 pb-20 md:pb-8'
+      className:
+        'min-h-screen pb-16 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-20'
     });
 
     const contentContainer = this.createElement('div', {
@@ -57,7 +58,7 @@ export class UserProfilePage extends Component {
 
     // Back Button
     const backButton = this.createElement('button', {
-      className: 'flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6'
+      className: 'flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-3'
     });
     backButton.addEventListener('click', () => router.navigate('/feed'));
     const backIcon = this.createIcon('arrow-left', 'w-5 h-5');

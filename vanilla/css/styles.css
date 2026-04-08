@@ -17,7 +17,14 @@
   box-sizing: border-box;
 }
 
+html {
+  margin: 0;
+  padding: 0;
+}
+
 body {
+  margin: 0;
+  padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -214,18 +221,17 @@ a {
 }
 
 /*
- * Hamburger + drawer: 768px–2199px for reliable tablet landscape behavior.
+ * Phone: bottom bar (<768px). Tablet: hamburger (768px–1279px). Desktop: top tabs (1280px+).
  */
 .artistry-nav {
   z-index: 100;
 }
 
-/* Full horizontal links only on ultra-wide screens (2200px+) */
 .artistry-nav-desktop-links {
   display: none;
 }
 
-@media (min-width: 2200px) {
+@media (min-width: 1280px) {
   .artistry-nav-desktop-links {
     display: flex !important;
     flex: 1 1 0%;
@@ -234,6 +240,7 @@ a {
     align-items: center;
     justify-content: flex-end;
     gap: 0.25rem;
+    flex-wrap: wrap;
   }
 }
 
@@ -257,7 +264,7 @@ a {
   display: none;
 }
 
-@media (min-width: 768px) and (max-width: 2199px) {
+@media (min-width: 768px) and (max-width: 1279px) {
   #tablet-nav-menu-btn {
     display: flex !important;
     align-items: center;
@@ -265,26 +272,20 @@ a {
   }
 }
 
-@media (min-width: 2200px) {
+@media (min-width: 1280px) {
   #tablet-nav-menu-btn {
     display: none !important;
   }
 }
 
 #tablet-nav-drawer {
-  display: none;
   position: fixed;
   inset: 0;
   z-index: 110;
 }
 
-@media (min-width: 768px) and (max-width: 2199px) {
-  #tablet-nav-drawer.tablet-nav-drawer-open {
-    display: block;
-  }
-}
-
-@media (min-width: 2200px) {
+/* Drawer open/closed is controlled in Navigation.js (inline styles). */
+@media (min-width: 1280px) {
   #tablet-nav-drawer {
     display: none !important;
   }

@@ -29,7 +29,8 @@ export class LandingPage extends Component {
 
   createHeroSection() {
     const section = this.createElement('section', {
-      className: 'relative min-h-screen flex items-center justify-center px-4 pt-20 md:pt-32 pb-20 bg-gradient-to-b from-slate-900 via-slate-900 to-transparent'
+      className:
+        'relative min-h-screen flex items-center justify-center px-4 pb-16 bg-gradient-to-b from-slate-900 via-slate-900 to-transparent pt-[max(1.125rem,env(safe-area-inset-top))] md:pt-20'
     });
 
     const container = this.createElement('div', {
@@ -73,19 +74,21 @@ export class LandingPage extends Component {
   createFeaturesSection() {
     const section = this.createElement('section', {
       id: 'features',
-      className: 'py-20 px-4'
+      className: 'py-20 w-full overflow-x-hidden'
     });
 
     const container = this.createElement('div', {
-      className: 'max-w-7xl mx-auto'
+      className:
+        'w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 box-border'
     });
 
     const title = this.createElement('h2', {
-      className: 'text-4xl md:text-5xl font-bold text-center mb-16'
+      className: 'text-4xl md:text-5xl font-bold text-center mb-10 md:mb-14'
     }, 'Features');
 
     const grid = this.createElement('div', {
-      className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'
+      className:
+        'grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 justify-items-stretch'
     });
 
     const features = [
@@ -123,7 +126,8 @@ export class LandingPage extends Component {
 
     features.forEach(feature => {
       const card = this.createElement('div', {
-        className: 'bg-slate-800 p-8 rounded-2xl hover:bg-slate-700 transition-all card-hover'
+        className:
+          'bg-slate-800 p-6 sm:p-8 rounded-2xl hover:bg-slate-700 transition-all card-hover h-full min-w-0 w-full flex flex-col'
       });
 
       const icon = this.createIcon(feature.icon, 'w-12 h-12 text-primary mb-4');
@@ -149,11 +153,11 @@ export class LandingPage extends Component {
 
   createArtistsSection() {
     const section = this.createElement('section', {
-      className: 'py-20 px-4 bg-slate-800/30'
+      className: 'py-20 w-full overflow-x-hidden bg-slate-800/30'
     });
 
     const container = this.createElement('div', {
-      className: 'max-w-7xl mx-auto'
+      className: 'w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 box-border'
     });
 
     const title = this.createElement('h2', {
@@ -161,7 +165,8 @@ export class LandingPage extends Component {
     }, 'Featured Artists');
 
     const grid = this.createElement('div', {
-      className: 'grid grid-cols-2 md:grid-cols-4 gap-6'
+      className:
+        'grid w-full grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6 sm:gap-x-6 sm:gap-y-6 justify-items-stretch'
     });
 
     const artists = [
@@ -217,11 +222,11 @@ export class LandingPage extends Component {
 
   createCTASection() {
     const section = this.createElement('section', {
-      className: 'py-32 px-4'
+      className: 'py-32 w-full overflow-x-hidden'
     });
 
     const container = this.createElement('div', {
-      className: 'max-w-4xl mx-auto text-center'
+      className: 'w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 box-border text-center'
     });
 
     const title = this.createElement('h2', {

@@ -3,25 +3,26 @@ import { Component } from './Component.js';
 export class NewsPage extends Component {
   render() {
     const container = this.createElement('div', {
-      className: 'min-h-screen pt-20 md:pt-24 pb-20 md:pb-8'
+      className:
+        'min-h-screen pb-16 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-20'
     });
 
     const contentContainer = this.createElement('div', {
-      className: 'max-w-6xl mx-auto px-4 md:px-6'
+      className: 'max-w-6xl mx-auto px-3 md:px-6'
     });
 
     // Header
     const header = this.createElement('div', {
-      className: 'mb-8'
+      className: 'mb-2 md:mb-4'
     });
 
     const title = this.createElement('h1', {
-      className: 'text-3xl md:text-4xl font-bold mb-2'
+      className: 'text-2xl md:text-3xl font-bold leading-tight'
     }, 'Art News & Articles');
 
     const subtitle = this.createElement('p', {
-      className: 'text-slate-400'
-    }, 'Stay updated with the latest in the art world');
+      className: 'text-slate-400 text-xs md:text-sm mt-0.5 md:mt-1 leading-snug'
+    }, 'Latest from the art world');
 
     header.appendChild(title);
     header.appendChild(subtitle);

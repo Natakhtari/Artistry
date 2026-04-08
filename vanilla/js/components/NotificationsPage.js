@@ -33,20 +33,21 @@ export class NotificationsPage extends Component {
 
   render() {
     const container = this.createElement('div', {
-      className: 'min-h-screen pt-20 md:pt-24 pb-20 md:pb-8'
+      className:
+        'min-h-screen pb-16 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-20'
     });
 
     const contentContainer = this.createElement('div', {
-      className: 'max-w-3xl mx-auto px-4 md:px-6'
+      className: 'max-w-3xl mx-auto px-3 md:px-6'
     });
 
     // Header
     const header = this.createElement('div', {
-      className: 'flex items-center justify-between mb-8'
+      className: 'flex items-center justify-between mb-2 md:mb-4'
     });
 
     const title = this.createElement('h1', {
-      className: 'text-3xl font-bold'
+      className: 'text-2xl md:text-3xl font-bold leading-tight'
     }, 'Notifications');
 
     const clearAllBtn = this.createElement('button', {

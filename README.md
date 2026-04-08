@@ -1,7 +1,7 @@
 
   # Artistry Web App UI Design
 
-  This is a code bundle for Artistry Web App UI Design. The original project is available at https://www.figma.com/design/glrfkK5Om2bkwFOEbVY2CO/Artistry-Web-App-UI-Design.
+  This is a code bundle for Artistry Web App UI Design. The original project is available at https://www.figma.com/design/VbN7MzRSE3eTq7ZyjNbyHX/Kursayin?node-id=0-1&p=f&t=VN48GINg71Syqi12-0.
 
   ## Running the code
 

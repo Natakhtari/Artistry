@@ -126,6 +126,7 @@ class App {
       }
       
       appContainer.innerHTML = '';
+      document.body.style.overflow = '';
 
       // Create main wrapper
       const wrapper = document.createElement('div');
