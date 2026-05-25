@@ -1,11 +1,13 @@
 import { Component } from './Component.js';
 import { stateManager } from '../utils/state.js';
 import { router } from '../router.js';
+import { api } from '../utils/api.js';
+import { toast } from '../utils/toast.js';
 
 export class AuthPage extends Component {
   constructor() {
     super('app');
-    this.mode = 'signin'; // signin, signup, forgot
+    this.mode = 'signin'; // signin | signup | forgot
   }
 
   render() {
@@ -17,228 +19,211 @@ export class AuthPage extends Component {
       className: 'bg-slate-800 rounded-2xl p-8 w-full max-w-md'
     });
 
-    // Logo & Title
-    const header = this.createElement('div', {
-      className: 'text-center mb-8'
-    });
+    // Logo
+    const header = this.createElement('div', { className: 'text-center mb-8' });
+    const logo = this.createElement('div', { className: 'flex items-center justify-center gap-2 mb-4' });
+    logo.appendChild(this.createIcon('palette', 'w-10 h-10 text-primary'));
+    logo.appendChild(this.createElement('span', { className: 'text-2xl font-bold gradient-text' }, 'Artistry'));
 
-    const logo = this.createElement('div', {
-      className: 'flex items-center justify-center gap-2 mb-4'
-    });
-
-    const logoIcon = this.createIcon('palette', 'w-10 h-10 text-primary');
-    const logoText = this.createElement('span', {
-      className: 'text-2xl font-bold gradient-text'
-    }, 'Artistry');
-
-    logo.appendChild(logoIcon);
-    logo.appendChild(logoText);
-
-    const title = this.createElement('h1', {
-      className: 'text-2xl font-bold mb-2'
-    }, 'Join the Artist Community');
-
-    const subtitle = this.createElement('p', {
-      className: 'text-slate-400'
-    }, this.mode === 'signin'
-      ? 'Sign in to your free art portfolio'
-      : this.mode === 'signup'
-        ? 'Create your free, ad-free digital art portfolio'
-        : 'Enter your email to reset your password');
-
-    const modeLabel = this.createElement('p', {
-      className: 'text-sm font-semibold text-primary mt-3'
-    }, this.mode === 'signin' ? 'Sign in' : this.mode === 'signup' ? 'Create account' : 'Reset password');
+    const subtitleMap = {
+      signin: 'Sign in to your free art portfolio',
+      signup: 'Create your free, ad-free digital art portfolio',
+      forgot: 'Enter your email to reset your password',
+    };
+    const labelMap = {
+      signin: 'Sign in',
+      signup: 'Create account',
+      forgot: 'Reset password',
+    };
 
     header.appendChild(logo);
-    header.appendChild(title);
-    header.appendChild(subtitle);
-    header.appendChild(modeLabel);
-
-    // Form
-    const form = this.createForm();
+    header.appendChild(this.createElement('h1', { className: 'text-2xl font-bold mb-2' }, 'Join the Artist Community'));
+    header.appendChild(this.createElement('p',  { className: 'text-slate-400' }, subtitleMap[this.mode]));
+    header.appendChild(this.createElement('p',  { className: 'text-sm font-semibold text-primary mt-3' }, labelMap[this.mode]));
 
     card.appendChild(header);
-    card.appendChild(form);
+    card.appendChild(this.createForm());
     container.appendChild(card);
-
     return container;
   }
 
   createForm() {
-    const form = this.createElement('form', {
-      className: 'space-y-4'
-    });
-    
-    // Add submit handler using addEventListener (not React's onsubmit)
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      console.log('Form submitted!');
-      this.handleSubmit();
-    });
+    const form = this.createElement('form', { className: 'space-y-4' });
+    form.addEventListener('submit', (e) => { e.preventDefault(); this.handleSubmit(); });
 
-    // Email
-    const emailGroup = this.createElement('div', {
-      className: 'space-y-2'
-    });
-
-    const emailLabel = this.createElement('label', {
-      className: 'block text-sm font-medium'
-    }, 'Email or Username');
-
-    const emailInput = this.createElement('input', {
-      type: 'text',
-      id: 'auth-email',
-      className: 'w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-primary transition-colors',
-      placeholder: this.mode === 'forgot' ? 'Enter your email' : 'admin',
-      required: true
-    });
-
-    emailGroup.appendChild(emailLabel);
-    emailGroup.appendChild(emailInput);
-    form.appendChild(emailGroup);
-
-    // Password (not for forgot password)
-    if (this.mode !== 'forgot') {
-      const passwordGroup = this.createElement('div', {
-        className: 'space-y-2'
-      });
-
-      const passwordLabel = this.createElement('label', {
-        className: 'block text-sm font-medium'
-      }, 'Password');
-
-      const passwordInput = this.createElement('input', {
-        type: 'password',
-        id: 'auth-password',
-        className: 'w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-primary transition-colors',
-        placeholder: this.mode === 'signin' ? 'admin' : 'Create a password',
-        required: true
-      });
-
-      passwordGroup.appendChild(passwordLabel);
-      passwordGroup.appendChild(passwordInput);
-      form.appendChild(passwordGroup);
-    }
-
-    // Confirm Password (signup only)
     if (this.mode === 'signup') {
-      const confirmGroup = this.createElement('div', {
-        className: 'space-y-2'
-      });
-
-      const confirmLabel = this.createElement('label', {
-        className: 'block text-sm font-medium'
-      }, 'Confirm Password');
-
-      const confirmInput = this.createElement('input', {
-        type: 'password',
-        id: 'auth-confirm',
-        className: 'w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-primary transition-colors',
-        placeholder: 'Confirm your password',
-        required: true
-      });
-
-      confirmGroup.appendChild(confirmLabel);
-      confirmGroup.appendChild(confirmInput);
-      form.appendChild(confirmGroup);
+      // Username
+      form.appendChild(this.inputGroup('Username', 'text',     'auth-username', 'Choose a username'));
+      // Email
+      form.appendChild(this.inputGroup('Email',    'email',    'auth-email',    'you@example.com'));
+    } else {
+      // Sign-in / forgot: combined email or username field
+      form.appendChild(this.inputGroup('Email or Username', 'text', 'auth-login', 'Enter your email or username'));
     }
 
-    // Forgot Password Link (signin only)
+    if (this.mode !== 'forgot') {
+      form.appendChild(this.inputGroup('Password', 'password', 'auth-password',
+        this.mode === 'signup' ? 'At least 8 characters' : 'Your password'));
+    }
+
+    if (this.mode === 'signup') {
+      form.appendChild(this.inputGroup('Confirm Password', 'password', 'auth-confirm', 'Repeat your password'));
+    }
+
     if (this.mode === 'signin') {
-      const forgotLink = this.createElement('button', {
+      const forgot = this.createElement('button', {
         type: 'button',
         className: 'text-sm text-primary hover:text-primary transition-colors'
       }, 'Forgot Password?');
-      
-      forgotLink.addEventListener('click', () => this.switchMode('forgot'));
-
-      form.appendChild(forgotLink);
+      forgot.addEventListener('click', () => this.switchMode('forgot'));
+      form.appendChild(forgot);
     }
 
-    // Submit Button
-    const submitBtn = this.createElement('button', {
-      type: 'submit',
-      className: 'w-full px-6 py-3 bg-primary hover:bg-primary-hover rounded-lg font-medium transition-colors'
-    }, this.mode === 'signin' ? 'Sign In' : this.mode === 'signup' ? 'Create Account' : 'Send Reset Link');
+    // Error banner (hidden by default)
+    const errBanner = this.createElement('div', {
+      id: 'auth-error',
+      className: 'hidden text-sm text-red-400 bg-red-900/30 border border-red-800 rounded-lg px-4 py-3'
+    });
+    form.appendChild(errBanner);
 
+    // Submit button
+    const submitLabels = { signin: 'Sign In', signup: 'Create Account', forgot: 'Send Reset Link' };
+    const submitBtn = this.createElement('button', {
+      id: 'auth-submit',
+      type: 'submit',
+      className: 'w-full px-6 py-3 bg-primary hover:bg-primary-hover rounded-lg font-medium transition-colors flex items-center justify-center gap-2'
+    }, submitLabels[this.mode]);
     form.appendChild(submitBtn);
 
-    // Demo credentials hint (signin only)
-    if (this.mode === 'signin') {
-      const hint = this.createElement('p', {
-        className: 'text-xs text-center text-slate-500 mt-4 p-3 bg-slate-900 rounded-lg'
-      }, '💡 Demo: admin / admin');
-
-      form.appendChild(hint);
-    }
-
-    // Switch Mode Link
-    const switchContainer = this.createElement('div', {
-      className: 'text-center mt-6 text-sm'
-    });
-
-    const switchText = this.createElement('span', {
-      className: 'text-slate-400'
-    }, this.mode === 'signin' ? "Don't have an account? " : this.mode === 'signup' ? "Already have an account? " : "Remember your password? ");
-
+    // Switch mode
+    const switchTexts = {
+      signin: ["Don't have an account? ", 'Sign Up',  'signup'],
+      signup: ['Already have an account? ', 'Sign In', 'signin'],
+      forgot: ['Remember your password? ',  'Sign In', 'signin'],
+    };
+    const [text, linkLabel, target] = switchTexts[this.mode];
+    const switchRow = this.createElement('div', { className: 'text-center mt-6 text-sm' });
     const switchLink = this.createElement('button', {
       type: 'button',
-      className: 'text-primary hover:text-primary font-medium transition-colors'
-    }, this.mode === 'signin' ? 'Sign Up' : 'Sign In');
-    
-    switchLink.addEventListener('click', () => this.switchMode(this.mode === 'signin' ? 'signup' : 'signin'));
-
-    switchContainer.appendChild(switchText);
-    switchContainer.appendChild(switchLink);
-    form.appendChild(switchContainer);
+      className: 'text-primary font-medium hover:underline'
+    }, linkLabel);
+    switchLink.addEventListener('click', () => this.switchMode(target));
+    switchRow.appendChild(this.createElement('span', { className: 'text-slate-400' }, text));
+    switchRow.appendChild(switchLink);
+    form.appendChild(switchRow);
 
     return form;
   }
 
-  handleSubmit() {
-    const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password')?.value;
+  inputGroup(label, type, id, placeholder) {
+    const g = this.createElement('div', { className: 'space-y-2' });
+    g.appendChild(this.createElement('label', { className: 'block text-sm font-medium', for: id }, label));
+    g.appendChild(this.createElement('input', {
+      type,
+      id,
+      placeholder,
+      autocomplete: type === 'password' ? 'current-password' : 'off',
+      className: 'w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-primary transition-colors',
+    }));
+    return g;
+  }
+
+  showError(msg) {
+    const el = document.getElementById('auth-error');
+    if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+  }
+
+  hideError() {
+    const el = document.getElementById('auth-error');
+    if (el) el.classList.add('hidden');
+  }
+
+  setLoading(on) {
+    const btn = document.getElementById('auth-submit');
+    if (!btn) return;
+    btn.disabled = on;
+    btn.style.opacity = on ? '0.7' : '1';
+    btn.style.cursor  = on ? 'not-allowed' : '';
+    btn.textContent   = on ? 'Please wait…' : { signin: 'Sign In', signup: 'Create Account', forgot: 'Send Reset Link' }[this.mode];
+  }
+
+  async handleSubmit() {
+    this.hideError();
 
     if (this.mode === 'signin') {
-      // Check credentials
-      if (email === 'admin' && password === 'admin') {
-        // Login successful
-        console.log('Login successful!');
-        stateManager.setState({ isAuthenticated: true });
-        
-        // Small delay to ensure state is updated
-        setTimeout(() => {
-          console.log('Navigating to /feed');
-          router.navigate('/feed', true);
-        }, 100);
-      } else {
-        alert('Invalid credentials! Use admin/admin');
-      }
+      await this.doLogin();
     } else if (this.mode === 'signup') {
-      const confirm = document.getElementById('auth-confirm').value;
-      if (password !== confirm) {
-        alert('Passwords do not match!');
-        return;
-      }
-      // Create account (mock)
-      alert('Account created! You can now sign in.');
+      await this.doRegister();
+    } else {
+      // Forgot password — not yet backed by API
+      toast.info('Password reset is not yet available in the alpha.');
       this.switchMode('signin');
-    } else if (this.mode === 'forgot') {
-      alert(`Password reset link sent to ${email}!`);
-      this.switchMode('signin');
+    }
+  }
+
+  async doLogin() {
+    const login    = document.getElementById('auth-login')?.value.trim();
+    const password = document.getElementById('auth-password')?.value;
+
+    if (!login || !password) {
+      this.showError('Please fill in all fields.');
+      return;
+    }
+
+    this.setLoading(true);
+    try {
+      const res = await api.auth.login({ login, password });
+      stateManager.setToken(res.data.access_token);
+      stateManager.setRefreshToken(res.data.refresh_token);
+      stateManager.setUser(res.data.user);
+      toast.success(`Welcome back, ${res.data.user.username}!`);
+      router.navigate('/feed');
+    } catch (err) {
+      this.setLoading(false);
+      this.showError(err.message || 'Login failed. Please try again.');
+    }
+  }
+
+  async doRegister() {
+    const username = document.getElementById('auth-username')?.value.trim();
+    const email    = document.getElementById('auth-email')?.value.trim();
+    const password = document.getElementById('auth-password')?.value;
+    const confirm  = document.getElementById('auth-confirm')?.value;
+
+    if (!username || !email || !password || !confirm) {
+      this.showError('Please fill in all fields.');
+      return;
+    }
+    if (password !== confirm) {
+      this.showError('Passwords do not match.');
+      return;
+    }
+    if (password.length < 8) {
+      this.showError('Password must be at least 8 characters.');
+      return;
+    }
+
+    this.setLoading(true);
+    try {
+      const res = await api.auth.register({ username, email, password });
+      stateManager.setToken(res.data.access_token);
+      stateManager.setRefreshToken(res.data.refresh_token);
+      stateManager.setUser(res.data.user);
+      toast.success('Account created! Welcome to Artistry.');
+      router.navigate('/feed');
+    } catch (err) {
+      this.setLoading(false);
+      this.showError(err.message || 'Registration failed. Please try again.');
     }
   }
 
   switchMode(newMode) {
     this.mode = newMode;
-    const pageContainer = document.getElementById('page-container');
-    if (pageContainer) {
-      pageContainer.innerHTML = '';
-      const newElement = this.render();
-      pageContainer.appendChild(newElement);
+    const pc = document.getElementById('page-container');
+    if (pc) {
+      pc.innerHTML = '';
+      pc.appendChild(this.render());
       this.afterRender();
     }
   }
 }
-

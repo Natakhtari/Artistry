@@ -1,32 +1,41 @@
 import { Component } from './Component.js';
 import { stateManager } from '../utils/state.js';
+import { api } from '../utils/api.js';
+import { toast } from '../utils/toast.js';
 
 export class ArtworkLightbox extends Component {
   constructor() {
     super('lightbox-container');
     this.artwork = null;
     this.comments = [];
-    this.commentText = '';
+    this.commentsLoaded = false;
   }
 
   setArtwork(artwork) {
     this.artwork = artwork;
-    this.comments = [
-      {
-        id: 1,
-        user: 'Yuki Tanaka',
-        avatar: 'https://i.pravatar.cc/150?img=32',
-        text: 'Absolutely stunning work! The color palette is mesmerizing.',
-        time: '1 hour ago'
-      },
-      {
-        id: 2,
-        user: 'Nina Patel',
-        avatar: 'https://i.pravatar.cc/150?img=9',
-        text: 'Love the composition and emotional depth!',
-        time: '30 minutes ago'
+    this.comments = [];
+    this.commentsLoaded = false;
+  }
+
+  async loadComments() {
+    if (this.commentsLoaded || !this.artwork?.id) return;
+    try {
+      const res = await api.comments.listForArtwork(this.artwork.id, { limit: 50 });
+      this.commentsLoaded = true;
+      const items = res?.data?.items ?? [];
+      const container = document.getElementById('comments-container');
+      const loading   = document.getElementById('comments-loading');
+      if (loading) loading.remove();
+      if (!container) return;
+      container.innerHTML = '';
+      items.forEach(c => container.appendChild(this.createComment(c)));
+      if (items.length === 0) {
+        container.innerHTML = '<p class="text-sm text-slate-500">No comments yet. Be the first!</p>';
       }
-    ];
+    } catch {
+      const loading = document.getElementById('comments-loading');
+      if (loading) loading.textContent = 'Could not load comments.';
+    }
   }
 
   render() {
@@ -37,19 +46,19 @@ export class ArtworkLightbox extends Component {
     const likes = isLiked ? this.artwork.likes + 1 : this.artwork.likes;
 
     const container = this.createElement('div', {
-      className: 'fixed inset-0 z-50 animate-fade-in',
+      className: 'fixed inset-0 z-[10001] animate-fade-in',
       id: 'lightbox-root'
     });
 
     // Backdrop
     const backdrop = this.createElement('div', {
-      className: 'fixed inset-0 bg-black/95 z-50'
+      className: 'fixed inset-0 bg-black/95 z-[10001]'
     });
     backdrop.addEventListener('click', () => this.close());
 
     // Content Container
     const contentWrapper = this.createElement('div', {
-      className: 'fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6'
+      className: 'fixed inset-0 z-[10001] flex items-center justify-center p-4 md:p-6'
     });
     contentWrapper.addEventListener('click', (e) => {
       if (e.target === e.currentTarget) this.close();
@@ -57,7 +66,7 @@ export class ArtworkLightbox extends Component {
 
     // Close Button
     const closeButton = this.createElement('button', {
-      className: 'absolute top-4 right-4 md:top-6 md:right-6 p-3 bg-slate-900/80 hover:bg-slate-900 rounded-full transition-colors z-[60]',
+      className: 'absolute top-4 right-4 md:top-6 md:right-6 p-3 bg-slate-900/80 hover:bg-slate-900 rounded-full transition-colors z-[10002]',
       id: 'lightbox-close-btn'
     });
     closeButton.addEventListener('click', (e) => {
@@ -69,20 +78,20 @@ export class ArtworkLightbox extends Component {
     const closeIcon = this.createIcon('x', 'w-6 h-6');
     closeButton.appendChild(closeIcon);
 
-    // Content
+    // Content — sized by the image, not the viewport
     const content = this.createElement('div', {
-      className: 'w-full max-w-[1800px] h-full flex flex-col md:flex-row gap-0 md:gap-6 items-center'
+      className: 'flex flex-col md:flex-row items-stretch max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl'
     });
 
-    // Image Side
+    // Image Side — no forced size, wraps the image naturally
     const imageContainer = this.createElement('div', {
-      className: 'flex-1 flex items-center justify-center w-full h-3/5 md:h-full bg-slate-800/50 rounded-3xl p-4 md:p-8'
+      className: 'flex items-center justify-center bg-slate-800/50 p-4 md:p-8'
     });
 
     const image = this.createElement('img', {
       src: this.artwork.image,
       alt: `${this.artwork.title} — digital artwork by ${this.artwork.artist} on Artistry`,
-      className: 'max-h-full max-w-full w-full object-contain rounded-2xl shadow-2xl'
+      className: 'w-auto h-auto max-h-[48vh] md:max-h-[84vh] max-w-[90vw] md:max-w-[55vw] object-contain rounded-2xl shadow-2xl block'
     });
 
     imageContainer.appendChild(image);
@@ -102,7 +111,7 @@ export class ArtworkLightbox extends Component {
 
   createInfoPanel(likes, isLiked) {
     const panel = this.createElement('div', {
-      className: 'w-full md:w-96 h-2/5 md:h-full bg-slate-900/95 backdrop-blur-xl rounded-t-3xl md:rounded-2xl border-t md:border border-slate-800 flex flex-col overflow-hidden'
+      className: 'w-full md:w-96 md:flex-shrink-0 bg-slate-900/95 backdrop-blur-xl border-t md:border-t-0 md:border-l border-slate-800 flex flex-col overflow-hidden'
     });
 
     // Artist Info
@@ -194,10 +203,11 @@ export class ArtworkLightbox extends Component {
       id: 'comments-container'
     });
 
-    this.comments.forEach(comment => {
-      const commentElement = this.createComment(comment);
-      commentsContainer.appendChild(commentElement);
-    });
+    const loadingMsg = this.createElement('p', {
+      className: 'text-sm text-slate-500',
+      id: 'comments-loading'
+    }, 'Loading comments…');
+    commentsContainer.appendChild(loadingMsg);
 
     commentsSection.appendChild(commentsTitle);
     commentsSection.appendChild(commentsContainer);
@@ -245,138 +255,142 @@ export class ArtworkLightbox extends Component {
   }
 
   createComment(comment) {
+    // Normalise both API shape { username, body, created_at } and legacy { user, text, time }
+    const username = comment.username ?? comment.user ?? 'Unknown';
+    const bodyText = comment.body     ?? comment.text ?? '';
+    const timeStr  = comment.created_at
+      ? new Date(comment.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      : (comment.time ?? '');
+    const avatarUrl = comment.avatar ?? null;
+
     const commentDiv = this.createElement('div', {
-      className: 'flex gap-3'
+      className: 'flex gap-3 group',
+      'data-comment-id': comment.id
     });
 
     const avatarContainer = this.createElement('div', {
-      className: 'w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-slate-700'
+      className: 'w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-slate-700 flex items-center justify-center'
     });
 
-    const avatar = this.createElement('img', {
-      src: comment.avatar,
-      alt: `${comment.user}, commenter on Artistry`,
-      className: 'w-full h-full object-cover'
-    });
+    if (avatarUrl) {
+      const avatar = this.createElement('img', {
+        src: avatarUrl,
+        alt: `${username} avatar`,
+        className: 'w-full h-full object-cover'
+      });
+      avatarContainer.appendChild(avatar);
+    } else {
+      avatarContainer.textContent = username.charAt(0).toUpperCase();
+      avatarContainer.classList.add('text-xs', 'font-bold', 'text-slate-300');
+    }
 
-    avatarContainer.appendChild(avatar);
+    const commentContent = this.createElement('div', { className: 'flex-1 min-w-0' });
 
-    const commentContent = this.createElement('div', {
-      className: 'flex-1 min-w-0'
-    });
+    const text = this.createElement('p', { className: 'text-sm' });
+    const userSpan = this.createElement('span', { className: 'font-medium' }, username + ' ');
+    const bodySpan = this.createElement('span', { className: 'text-slate-400' }, bodyText);
+    text.appendChild(userSpan);
+    text.appendChild(bodySpan);
 
-    const text = this.createElement('p', {
-      className: 'text-sm'
-    });
+    const footer = this.createElement('div', { className: 'flex items-center gap-3 mt-1' });
+    const timeEl = this.createElement('span', { className: 'text-xs text-slate-500' }, timeStr);
+    footer.appendChild(timeEl);
 
-    const userName = this.createElement('span', {
-      className: 'font-medium'
-    }, comment.user + ' ');
-
-    const commentText = this.createElement('span', {
-      className: 'text-slate-400'
-    }, comment.text);
-
-    text.appendChild(userName);
-    text.appendChild(commentText);
-
-    const time = this.createElement('p', {
-      className: 'text-xs text-slate-500 mt-1'
-    }, comment.time);
+    // Show delete button for own comments
+    const state = stateManager.getState();
+    const currentUser = state?.user;
+    if (currentUser && (comment.user_id === currentUser.id || comment.username === currentUser.username)) {
+      const delBtn = this.createElement('button', {
+        className: 'text-xs text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity'
+      }, 'Delete');
+      delBtn.addEventListener('click', () => this.deleteComment(comment.id, commentDiv));
+      footer.appendChild(delBtn);
+    }
 
     commentContent.appendChild(text);
-    commentContent.appendChild(time);
+    commentContent.appendChild(footer);
     commentDiv.appendChild(avatarContainer);
     commentDiv.appendChild(commentContent);
 
     return commentDiv;
   }
 
-  handleLike() {
-    console.log('ArtworkLightbox: handleLike called');
-    const state = stateManager.getState();
-    const isLiked = state.likes[this.artwork.id] || false;
-    const currentLikes = isLiked ? this.artwork.likes + 1 : this.artwork.likes;
-    
-    const result = stateManager.toggleLike(this.artwork.id, currentLikes);
-    console.log('ArtworkLightbox: Like toggled. New state:', result);
-    
-    // Update UI - like count
-    const likeElement = document.getElementById('lightbox-likes');
-    if (likeElement) {
-      likeElement.textContent = result.newLikes.toString();
-    }
-
-    // Update UI - button styling
-    const likeButton = document.getElementById('lightbox-like-btn');
-    if (likeButton) {
-      if (result.isLiked) {
-        likeButton.className = 'flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-red-500';
-      } else {
-        likeButton.className = 'flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-slate-400 hover:text-red-500 hover:bg-slate-800';
-      }
-    }
-
-    // Update main feed if visible
-    const feedLikeElement = document.getElementById(`likes-${this.artwork.id}`);
-    if (feedLikeElement) {
-      feedLikeElement.textContent = result.newLikes.toString();
-    }
-    
-    // Update feed like button styling
-    const feedLikeButton = document.getElementById(`like-btn-${this.artwork.id}`);
-    if (feedLikeButton) {
-      if (result.isLiked) {
-        feedLikeButton.classList.add('text-red-500');
-        feedLikeButton.classList.remove('text-slate-400');
-      } else {
-        feedLikeButton.classList.remove('text-red-500');
-        feedLikeButton.classList.add('text-slate-400');
-      }
-    }
-
-    if (window.lucide) {
-      window.lucide.createIcons();
+  async deleteComment(commentId, element) {
+    try {
+      await api.comments.remove(commentId);
+      element.remove();
+    } catch (err) {
+      toast.show(err.message || 'Could not delete comment', 'error');
     }
   }
 
-  postComment() {
-    console.log('ArtworkLightbox: postComment called');
+  handleLike() {
+    const state      = stateManager.getState();
+    const isLiked    = state.likes[this.artwork.id] || false;
+    const current    = isLiked ? this.artwork.likes + 1 : this.artwork.likes;
+    const result     = stateManager.toggleLike(this.artwork.id, current);
+
+    // Update lightbox UI
+    const likeEl  = document.getElementById('lightbox-likes');
+    const likeBtn = document.getElementById('lightbox-like-btn');
+    if (likeEl)  likeEl.textContent = result.newLikes.toString();
+    if (likeBtn) {
+      likeBtn.className = result.isLiked
+        ? 'flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-red-500'
+        : 'flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-slate-400 hover:text-red-500 hover:bg-slate-800';
+    }
+
+    // Mirror on feed card if visible
+    const feedLikeEl  = document.getElementById(`likes-${this.artwork.id}`);
+    const feedLikeBtn = document.getElementById(`like-btn-${this.artwork.id}`);
+    if (feedLikeEl)  feedLikeEl.textContent = result.newLikes.toString();
+    if (feedLikeBtn) {
+      feedLikeBtn.classList.toggle('text-red-500',  result.isLiked);
+      feedLikeBtn.classList.toggle('text-slate-400', !result.isLiked);
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+
+    // Sync to backend
+    if (stateManager.getToken()) {
+      api.likes.toggle('artwork', this.artwork.id).catch(() => { /* non-fatal */ });
+    }
+  }
+
+  async postComment() {
     const input = document.getElementById('comment-input');
-    if (!input) {
-      console.log('ArtworkLightbox: Input not found');
-      return;
-    }
-    if (!input.value.trim()) {
-      console.log('ArtworkLightbox: Input is empty');
-      return;
-    }
+    if (!input?.value.trim()) return;
 
-    console.log('ArtworkLightbox: Adding comment:', input.value);
-    const newComment = {
-      id: this.comments.length + 1,
-      user: 'You',
-      avatar: 'https://i.pravatar.cc/150?img=68',
-      text: input.value,
-      time: 'Just now'
-    };
-
-    this.comments.push(newComment);
-    
-    const commentsContainer = document.getElementById('comments-container');
-    if (commentsContainer) {
-      const commentElement = this.createComment(newComment);
-      commentsContainer.appendChild(commentElement);
-      console.log('ArtworkLightbox: Comment added to DOM');
-      
-      if (window.lucide) {
-        window.lucide.createIcons();
-      }
-    } else {
-      console.log('ArtworkLightbox: Comments container not found');
-    }
-
+    const postBtn = document.getElementById('lightbox-post-btn');
+    const text = input.value.trim();
     input.value = '';
+    if (postBtn) postBtn.disabled = true;
+
+    const state = stateManager.getState();
+    if (!state?.user) {
+      toast.show('Sign in to leave a comment', 'error');
+      input.value = text;
+      if (postBtn) postBtn.disabled = false;
+      return;
+    }
+
+    try {
+      const res = await api.comments.createForArtwork(this.artwork.id, { body: text });
+      const comment = res?.data ?? {};
+      const container = document.getElementById('comments-container');
+      if (container) {
+        // Remove the "No comments yet" placeholder if present
+        const placeholder = container.querySelector('p');
+        if (placeholder && placeholder.textContent.includes('No comments')) placeholder.remove();
+        container.appendChild(this.createComment(comment));
+        container.scrollTop = container.scrollHeight;
+      }
+    } catch (err) {
+      toast.show(err.message || 'Could not post comment', 'error');
+      input.value = text;
+    } finally {
+      if (postBtn) postBtn.disabled = false;
+    }
   }
 
   close() {
@@ -388,31 +402,25 @@ export class ArtworkLightbox extends Component {
     } else {
       console.log('ArtworkLightbox: Lightbox not found');
     }
+    document.body.style.overflow = '';
     stateManager.updateNested('modalState.artworkLightbox', false);
     stateManager.updateNested('modalState.selectedArtwork', null);
   }
 
   mount() {
-    console.log('ArtworkLightbox: mount() called');
     let container = document.getElementById('lightbox-container');
-    
     if (!container) {
-      console.log('ArtworkLightbox: Creating lightbox-container');
       container = document.createElement('div');
       container.id = 'lightbox-container';
       document.body.appendChild(container);
-    } else {
-      console.log('ArtworkLightbox: lightbox-container already exists');
     }
 
     container.innerHTML = '';
-    console.log('ArtworkLightbox: Rendering...');
+    document.body.style.overflow = 'hidden';
     const element = this.render();
-    console.log('ArtworkLightbox: Element rendered');
     container.appendChild(element);
-    console.log('ArtworkLightbox: Element appended to container');
     this.afterRender();
-    console.log('ArtworkLightbox: afterRender() complete');
+    this.loadComments();
   }
 }
 

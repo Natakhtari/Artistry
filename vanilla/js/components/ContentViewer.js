@@ -9,12 +9,12 @@ export class ContentViewer extends Component {
 
   render() {
     const backdrop = this.createElement('div', {
-      className: 'fixed inset-0 z-50 bg-black/95 animate-fade-in',
+      className: 'fixed inset-0 z-[10001] bg-black/95 animate-fade-in',
       id: 'viewer-backdrop'
     });
 
     const container = this.createElement('div', {
-      className: 'fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none'
+      className: 'fixed inset-0 z-[10001] flex items-center justify-center p-4 pointer-events-none'
     });
 
     const content = this.createElement('div', {
@@ -296,6 +296,7 @@ export class ContentViewer extends Component {
     } else {
       console.log('ContentViewer: Container not found');
     }
+    document.body.style.overflow = '';
   }
 
   mount() {
@@ -309,6 +310,7 @@ export class ContentViewer extends Component {
     container.id = 'content-viewer-container';
     document.body.appendChild(container);
 
+    document.body.style.overflow = 'hidden';
     const element = this.render();
     container.appendChild(element);
     

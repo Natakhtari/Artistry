@@ -1,18 +1,31 @@
 import { Component } from './Component.js';
 import { stateManager } from '../utils/state.js';
+import { api } from '../utils/api.js';
+import { toast } from '../utils/toast.js';
+
+const TYPES = [
+  { value: 'photo',   label: 'Photo',   icon: 'image'     },
+  { value: 'video',   label: 'Video',   icon: 'video'     },
+  { value: 'podcast', label: 'Podcast', icon: 'mic'       },
+  { value: 'article', label: 'Article', icon: 'file-text' },
+];
 
 export class CreatePostModal extends Component {
   constructor(onClose, onSubmit) {
     super('create-post-modal');
-    this.onClose = onClose;
-    this.onSubmit = onSubmit;
-    this.selectedType = 'artwork';
-    this.previewUrl = null;
+    this.onClose      = onClose;
+    this.onSubmit     = onSubmit;
+    this.selectedType = 'photo';
+    this.uploadedFile = null;
+    this.previewUrl   = null;
+    this.tagInput     = '';
   }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   render() {
     const backdrop = this.createElement('div', {
-      className: 'fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in'
+      className: 'fixed inset-0 bg-black/80 z-[10001] flex items-center justify-center p-4'
     });
     backdrop.addEventListener('click', (e) => {
       if (e.target === e.currentTarget) this.close();
@@ -22,59 +35,81 @@ export class CreatePostModal extends Component {
       className: 'bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto'
     });
 
-    // Header
+    modal.appendChild(this._buildHeader());
+    modal.appendChild(this._buildForm());
+    modal.appendChild(this._buildFooter());
+    backdrop.appendChild(modal);
+
+    return backdrop;
+  }
+
+  _buildHeader() {
     const header = this.createElement('div', {
       className: 'flex items-center justify-between p-6 border-b border-slate-700'
     });
+    header.appendChild(this.createElement('h2', { className: 'text-2xl font-bold' }, 'Create New Post'));
 
-    const title = this.createElement('h2', {
-      className: 'text-2xl font-bold'
-    }, 'Create New Post');
-
-    const closeButton = this.createElement('button', {
-      className: 'p-2 hover:bg-slate-700 rounded-lg transition-colors',
-      id: 'create-post-close-btn'
+    const closeBtn = this.createElement('button', {
+      className: 'p-2 hover:bg-slate-700 rounded-lg transition-colors'
     });
-    closeButton.addEventListener('click', () => this.close());
-    const closeIcon = this.createIcon('x', 'w-6 h-6');
-    closeButton.appendChild(closeIcon);
+    closeBtn.addEventListener('click', () => this.close());
+    closeBtn.appendChild(this.createIcon('x', 'w-6 h-6'));
+    header.appendChild(closeBtn);
 
-    header.appendChild(title);
-    header.appendChild(closeButton);
+    return header;
+  }
 
-    // Form
-    const form = this.createElement('div', {
-      className: 'p-6 space-y-6'
+  _buildForm() {
+    const form = this.createElement('div', { className: 'p-6 space-y-6' });
+
+    form.appendChild(this._buildTypeSelector());
+
+    const fields = this.createElement('div', { id: 'cpm-fields' });
+    form.appendChild(fields);
+
+    // Tags — shared across all types
+    const tagsWrap = this.createElement('div', { className: 'space-y-1' });
+    tagsWrap.appendChild(this.createElement('label', {
+      className: 'block text-sm font-medium',
+      for: 'cpm-tags'
+    }, 'Tags (comma-separated)'));
+    const tagsInput = this.createElement('input', {
+      type:        'text',
+      id:          'cpm-tags',
+      placeholder: 'e.g. digital, portrait, abstract',
+      className:   'w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-primary transition-colors text-sm',
+    });
+    tagsWrap.appendChild(tagsInput);
+    tagsWrap.appendChild(this.createElement('p', {
+      className: 'text-xs text-slate-500 mt-1'
+    }, 'Tags help others discover your work'));
+    form.appendChild(tagsWrap);
+
+    return form;
+  }
+
+  _buildTypeSelector() {
+    const wrap = this.createElement('div', { className: 'space-y-2' });
+    wrap.appendChild(this.createElement('label', { className: 'block text-sm font-medium mb-2' }, 'Content Type'));
+
+    const grid = this.createElement('div', { className: 'grid grid-cols-2 md:grid-cols-4 gap-3' });
+
+    TYPES.forEach(({ value, label, icon }) => {
+      const btn = this.createElement('button', {
+        id:        `cpm-type-${value}`,
+        className: this._typeClass(value),
+      });
+      btn.addEventListener('click', () => this._selectType(value));
+      btn.appendChild(this.createIcon(icon, 'w-6 h-6 mx-auto mb-2'));
+      btn.appendChild(this.createElement('div', { className: 'text-sm font-medium' }, label));
+      grid.appendChild(btn);
     });
 
-    // Type Selector
-    const typeSection = this.createTypeSelector();
-    
-    // Image Upload
-    const imageSection = this.createImageUpload();
-    
-    // Title Input
-    const titleGroup = this.createInputGroup('Title', 'Give your post a title...', 'post-title');
-    
-    // Description Input
-    const descLabel = this.createElement('label', {
-      className: 'block text-sm font-medium mb-2'
-    }, 'Description');
+    wrap.appendChild(grid);
+    return wrap;
+  }
 
-    const descTextarea = this.createElement('textarea', {
-      rows: 4,
-      className: 'w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-primary transition-colors resize-none',
-      placeholder: 'Describe your creation...',
-      id: 'post-description'
-    });
-
-    const descGroup = this.createElement('div', {
-      className: 'space-y-2'
-    });
-    descGroup.appendChild(descLabel);
-    descGroup.appendChild(descTextarea);
-
-    // Footer
+  _buildFooter() {
     const footer = this.createElement('div', {
       className: 'flex gap-3 justify-end p-6 border-t border-slate-700'
     });
@@ -85,307 +120,387 @@ export class CreatePostModal extends Component {
     cancelBtn.addEventListener('click', () => this.close());
 
     const publishBtn = this.createElement('button', {
-      className: 'px-6 py-2 bg-primary hover:bg-primary-hover rounded-lg transition-colors',
-      style: 'background-color: #F25C54'
+      id:        'cpm-publish-btn',
+      className: 'px-6 py-2 bg-primary hover:bg-primary-hover rounded-lg transition-colors font-medium'
     }, 'Publish');
-    publishBtn.addEventListener('click', () => this.handlePublish());
-    publishBtn.addEventListener('mouseenter', (e) => {
-      e.target.style.backgroundColor = '#D93830';
-    });
-    publishBtn.addEventListener('mouseleave', (e) => {
-      e.target.style.backgroundColor = '#F25C54';
-    });
+    publishBtn.addEventListener('click', () => this._handlePublish());
 
     footer.appendChild(cancelBtn);
     footer.appendChild(publishBtn);
-
-    // Assemble
-    form.appendChild(typeSection);
-    form.appendChild(imageSection);
-    form.appendChild(titleGroup);
-    form.appendChild(descGroup);
-
-    modal.appendChild(header);
-    modal.appendChild(form);
-    modal.appendChild(footer);
-    backdrop.appendChild(modal);
-
-    return backdrop;
+    return footer;
   }
 
-  createTypeSelector() {
-    const section = this.createElement('div', {
-      className: 'space-y-2'
-    });
+  // ── Type switching ────────────────────────────────────────────────────────
 
-    const label = this.createElement('label', {
-      className: 'block text-sm font-medium mb-2'
-    }, 'Content Type');
-
-    const types = [
-      { value: 'artwork', label: 'Artwork', icon: 'image' },
-      { value: 'video', label: 'Video', icon: 'video' },
-      { value: 'podcast', label: 'Podcast', icon: 'mic' },
-      { value: 'article', label: 'Article', icon: 'file-text' }
-    ];
-
-    const buttonsContainer = this.createElement('div', {
-      className: 'grid grid-cols-2 md:grid-cols-4 gap-3'
-    });
-
-    types.forEach(type => {
-      const btn = this.createElement('button', {
-        className: `p-4 rounded-lg border-2 transition-all ${
-          this.selectedType === type.value 
-            ? 'border-primary bg-slate-700' 
-            : 'border-slate-700 hover:border-slate-600'
-        }`,
-        id: `type-${type.value}`,
-        style: this.selectedType === type.value ? 'border-color: #F25C54' : ''
-      });
-      
-      btn.addEventListener('click', () => this.selectType(type.value));
-
-      const icon = this.createIcon(type.icon, 'w-6 h-6 mx-auto mb-2');
-      const text = this.createElement('div', {
-        className: 'text-sm font-medium'
-      }, type.label);
-
-      btn.appendChild(icon);
-      btn.appendChild(text);
-      buttonsContainer.appendChild(btn);
-    });
-
-    section.appendChild(label);
-    section.appendChild(buttonsContainer);
-
-    return section;
+  _typeClass(value) {
+    const active = value === this.selectedType;
+    return `p-4 rounded-lg border-2 transition-all text-center ${
+      active
+        ? 'border-primary bg-slate-700'
+        : 'border-slate-700 hover:border-slate-600'
+    }`;
   }
 
-  createImageUpload() {
-    const section = this.createElement('div', {
-      className: 'space-y-2'
+  _selectType(value) {
+    this.selectedType = value;
+    this.uploadedFile = null;
+    this.previewUrl   = null;
+
+    TYPES.forEach(({ value: v }) => {
+      const btn = document.getElementById(`cpm-type-${v}`);
+      if (btn) btn.className = this._typeClass(v);
     });
 
-    const label = this.createElement('label', {
-      className: 'block text-sm font-medium mb-2'
-    }, 'Image / Thumbnail');
+    this._renderFields();
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  // ── Dynamic fields per type ───────────────────────────────────────────────
+
+  _renderFields() {
+    const area = document.getElementById('cpm-fields');
+    if (!area) return;
+    area.innerHTML = '';
+
+    switch (this.selectedType) {
+      case 'photo':   area.appendChild(this._fieldsPhoto());   break;
+      case 'video':   area.appendChild(this._fieldsVideo());   break;
+      case 'podcast': area.appendChild(this._fieldsPodcast()); break;
+      case 'article': area.appendChild(this._fieldsArticle()); break;
+    }
+  }
+
+  // Photo ────────────────────────────────────────────────────────────────────
+
+  _fieldsPhoto() {
+    const wrap = this.createElement('div', { className: 'space-y-4' });
+    wrap.appendChild(this._buildFileUploader('Upload Photo', 'image/*', 'Photo (JPG, PNG, GIF, WebP — max 50 MB)'));
+    wrap.appendChild(this._buildInput('Title', 'Give your photo a title…', 'cpm-title', true));
+    wrap.appendChild(this._buildTextarea('Description', 'Tell us about this photo…', 'cpm-desc'));
+    return wrap;
+  }
+
+  // Video ────────────────────────────────────────────────────────────────────
+
+  _fieldsVideo() {
+    const wrap = this.createElement('div', { className: 'space-y-4' });
+    wrap.appendChild(this._buildInput('Video URL *', 'https://youtube.com/watch?v=… or direct .mp4 link', 'cpm-media-url', true));
+    wrap.appendChild(this._buildInput('Thumbnail URL (optional)', 'https://…', 'cpm-thumb-url', false));
+    wrap.appendChild(this._buildInput('Title', 'Give your video a title…', 'cpm-title', true));
+    wrap.appendChild(this._buildTextarea('Description', 'What is this video about?', 'cpm-desc'));
+    return wrap;
+  }
+
+  // Podcast ──────────────────────────────────────────────────────────────────
+
+  _fieldsPodcast() {
+    const wrap = this.createElement('div', { className: 'space-y-4' });
+    wrap.appendChild(this._buildInput('Audio URL *', 'https://spotify.com/… or direct .mp3 link', 'cpm-media-url', true));
+    wrap.appendChild(this._buildInput('Cover Image URL (optional)', 'https://…', 'cpm-thumb-url', false));
+    wrap.appendChild(this._buildInput('Episode Title', 'Give your episode a title…', 'cpm-title', true));
+    wrap.appendChild(this._buildTextarea('Description / Show Notes', 'What is this episode about?', 'cpm-desc'));
+    return wrap;
+  }
+
+  // Article ──────────────────────────────────────────────────────────────────
+
+  _fieldsArticle() {
+    const wrap = this.createElement('div', { className: 'space-y-4' });
+    wrap.appendChild(this._buildFileUploader('Cover Image (optional)', 'image/*', 'JPG, PNG, WebP — max 50 MB'));
+    wrap.appendChild(this._buildInput('Title', 'Article headline…', 'cpm-title', true));
+    wrap.appendChild(this._buildTextarea('Article Body *', 'Write your article here…', 'cpm-article-body', 10));
+    wrap.appendChild(this._buildTextarea('Short Description (optional)', 'A brief summary shown in previews…', 'cpm-desc', 3));
+    return wrap;
+  }
+
+  // ── Shared field builders ─────────────────────────────────────────────────
+
+  _buildInput(label, placeholder, id, required = false) {
+    const wrap = this.createElement('div', { className: 'space-y-1' });
+
+    const lbl = this.createElement('label', { className: 'block text-sm font-medium', for: id }, label);
+
+    const inp = this.createElement('input', {
+      type:        'text',
+      id,
+      placeholder,
+      className:   'w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-primary transition-colors',
+    });
+
+    wrap.appendChild(lbl);
+    wrap.appendChild(inp);
+    return wrap;
+  }
+
+  _buildTextarea(label, placeholder, id, rows = 4) {
+    const wrap = this.createElement('div', { className: 'space-y-1' });
+
+    wrap.appendChild(this.createElement('label', { className: 'block text-sm font-medium', for: id }, label));
+
+    const ta = this.createElement('textarea', {
+      id,
+      rows,
+      placeholder,
+      className: 'w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-primary transition-colors resize-none',
+    });
+    wrap.appendChild(ta);
+    return wrap;
+  }
+
+  _buildFileUploader(label, accept, hint) {
+    const wrap = this.createElement('div', { className: 'space-y-2' });
+
+    wrap.appendChild(this.createElement('label', { className: 'block text-sm font-medium' }, label));
 
     const uploadArea = this.createElement('div', {
-      className: 'border-2 border-dashed border-slate-700 rounded-lg p-8 text-center hover:border-slate-600 transition-colors cursor-pointer',
-      id: 'upload-area'
+      id:        'cpm-upload-area',
+      className: 'border-2 border-dashed border-slate-700 rounded-lg p-8 text-center hover:border-slate-500 transition-colors cursor-pointer',
     });
+    uploadArea.appendChild(this.createIcon('upload', 'w-12 h-12 mx-auto mb-4 text-slate-500'));
+    uploadArea.appendChild(this.createElement('p', { className: 'text-slate-400 mb-1' }, 'Click to upload or drag and drop'));
+    uploadArea.appendChild(this.createElement('p', { className: 'text-sm text-slate-500' }, hint));
 
-    const uploadIcon = this.createIcon('upload', 'w-12 h-12 mx-auto mb-4 text-slate-500');
-    const uploadText = this.createElement('p', {
-      className: 'text-slate-400 mb-2'
-    }, 'Click to upload or drag and drop');
-    const uploadHint = this.createElement('p', {
-      className: 'text-sm text-slate-500'
-    }, 'PNG, JPG, GIF up to 10MB');
-
-    // Hidden file input
     const fileInput = this.createElement('input', {
-      type: 'file',
-      accept: 'image/*',
+      type:      'file',
+      accept,
       className: 'hidden',
-      id: 'post-image-input'
+      id:        'cpm-file-input',
     });
-    fileInput.addEventListener('change', (e) => this.handleImageSelect(e));
-
+    fileInput.addEventListener('change', (e) => this._onFileSelected(e));
     uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('border-primary'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('border-primary'));
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('border-primary');
+      const file = e.dataTransfer?.files?.[0];
+      if (file) this._applyFile(file);
+    });
 
-    uploadArea.appendChild(uploadIcon);
-    uploadArea.appendChild(uploadText);
-    uploadArea.appendChild(uploadHint);
     uploadArea.appendChild(fileInput);
+    wrap.appendChild(uploadArea);
 
-    // Preview area
-    const preview = this.createElement('div', {
-      className: 'hidden mt-4 relative',
-      id: 'image-preview'
-    });
+    const preview = this.createElement('div', { id: 'cpm-preview', className: 'hidden mt-3 relative' });
+    wrap.appendChild(preview);
 
-    section.appendChild(label);
-    section.appendChild(uploadArea);
-    section.appendChild(preview);
-
-    return section;
+    return wrap;
   }
 
-  createInputGroup(label, placeholder, id) {
-    const group = this.createElement('div', {
-      className: 'space-y-2'
-    });
+  // ── File handling ─────────────────────────────────────────────────────────
 
-    const labelEl = this.createElement('label', {
-      className: 'block text-sm font-medium',
-      for: id
-    }, label);
-
-    const input = this.createElement('input', {
-      type: 'text',
-      id: id,
-      className: 'w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-primary transition-colors',
-      placeholder: placeholder
-    });
-
-    group.appendChild(labelEl);
-    group.appendChild(input);
-
-    return group;
+  _onFileSelected(e) {
+    const file = e.target.files?.[0];
+    if (file) this._applyFile(file);
   }
 
-  selectType(type) {
-    console.log('CreatePostModal: Type selected:', type);
-    this.selectedType = type;
-    
-    // Update button styles
-    const types = ['artwork', 'video', 'podcast', 'article'];
-    types.forEach(t => {
-      const btn = document.getElementById(`type-${t}`);
-      if (btn) {
-        if (t === type) {
-          btn.className = 'p-4 rounded-lg border-2 transition-all border-primary bg-slate-700';
-          btn.style.borderColor = '#F25C54';
-        } else {
-          btn.className = 'p-4 rounded-lg border-2 transition-all border-slate-700 hover:border-slate-600';
-          btn.style.borderColor = '';
-        }
+  _applyFile(file) {
+    this.uploadedFile = file;
+    if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
+    this.previewUrl = URL.createObjectURL(file);
+    this._showPreview(this.previewUrl, file.name);
+  }
+
+  _showPreview(url, name) {
+    const uploadArea = document.getElementById('cpm-upload-area');
+    const preview    = document.getElementById('cpm-preview');
+    if (!uploadArea || !preview) return;
+
+    uploadArea.classList.add('hidden');
+    preview.classList.remove('hidden');
+    preview.innerHTML = '';
+
+    const img = this.createElement('img', {
+      src:       url,
+      alt:       name,
+      className: 'w-full h-56 object-cover rounded-lg',
+    });
+
+    const nameTag = this.createElement('p', {
+      className: 'text-xs text-slate-400 mt-1 truncate'
+    }, name);
+
+    const removeBtn = this.createElement('button', {
+      className: 'absolute top-2 right-2 p-1.5 bg-red-600 hover:bg-red-700 rounded-full transition-colors'
+    });
+    removeBtn.appendChild(this.createIcon('x', 'w-4 h-4'));
+    removeBtn.addEventListener('click', () => this._removeFile());
+
+    preview.appendChild(img);
+    preview.appendChild(nameTag);
+    preview.appendChild(removeBtn);
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  _removeFile() {
+    if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
+    this.uploadedFile = null;
+    this.previewUrl   = null;
+
+    const uploadArea = document.getElementById('cpm-upload-area');
+    const preview    = document.getElementById('cpm-preview');
+    const fileInput  = document.getElementById('cpm-file-input');
+    if (uploadArea) uploadArea.classList.remove('hidden');
+    if (preview)    { preview.classList.add('hidden'); preview.innerHTML = ''; }
+    if (fileInput)  fileInput.value = '';
+  }
+
+  // ── Publish ───────────────────────────────────────────────────────────────
+
+  async _handlePublish() {
+    const title = document.getElementById('cpm-title')?.value?.trim();
+    if (!title) { toast.error('Please enter a title.'); return; }
+
+    const publishBtn = document.getElementById('cpm-publish-btn');
+    const setLoading = (on) => {
+      if (!publishBtn) return;
+      publishBtn.disabled    = on;
+      publishBtn.textContent = on ? 'Publishing…' : 'Publish';
+    };
+
+    setLoading(true);
+
+    try {
+      const tagNames = (document.getElementById('cpm-tags')?.value ?? '')
+        .split(',').map(t => t.trim()).filter(Boolean);
+
+      if (this.selectedType === 'article') {
+        await this._publishArticle(title, tagNames);
+      } else {
+        await this._publishArtwork(title, tagNames);
       }
+    } catch (err) {
+      toast.error(err.message || 'Failed to publish. Please try again.');
+      setLoading(false);
+    }
+  }
+
+  async _publishArtwork(title, tagNames) {
+    const mediaUrl = await this._resolveMediaUrl();
+    if (!mediaUrl) {
+      toast.error(this.selectedType === 'photo'
+        ? 'Please upload a photo.'
+        : 'Please provide a URL for your content.');
+      document.getElementById('cpm-publish-btn').disabled = false;
+      document.getElementById('cpm-publish-btn').textContent = 'Publish';
+      return;
+    }
+
+    const description = document.getElementById('cpm-desc')?.value?.trim() || '';
+    const res = await api.artworks.create({
+      title,
+      description,
+      content_type: this.selectedType,
+      media_url:    mediaUrl,
+      status:       'published',
     });
-  }
 
-  handleImageSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    console.log('CreatePostModal: Image selected:', file.name);
-    
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      this.previewUrl = event.target.result;
-      this.showPreview(event.target.result);
-    };
-    reader.readAsDataURL(file);
-  }
-
-  showPreview(url) {
-    const uploadArea = document.getElementById('upload-area');
-    const preview = document.getElementById('image-preview');
-    
-    if (uploadArea && preview) {
-      uploadArea.classList.add('hidden');
-      preview.classList.remove('hidden');
-      
-      preview.innerHTML = '';
-      
-      const img = this.createElement('img', {
-        src: url,
-        className: 'w-full h-64 object-cover rounded-lg',
-        alt: 'Preview'
-      });
-      
-      const removeBtn = this.createElement('button', {
-        className: 'absolute top-2 right-2 p-2 bg-red-600 hover:bg-red-700 rounded-full transition-colors'
-      });
-      const removeIcon = this.createIcon('x', 'w-5 h-5');
-      removeBtn.appendChild(removeIcon);
-      removeBtn.addEventListener('click', () => this.removeImage());
-      
-      preview.appendChild(img);
-      preview.appendChild(removeBtn);
-    }
-  }
-
-  removeImage() {
-    console.log('CreatePostModal: Removing image');
-    this.previewUrl = null;
-    const uploadArea = document.getElementById('upload-area');
-    const preview = document.getElementById('image-preview');
-    
-    if (uploadArea && preview) {
-      uploadArea.classList.remove('hidden');
-      preview.classList.add('hidden');
-      preview.innerHTML = '';
-    }
-    
-    const fileInput = document.getElementById('post-image-input');
-    if (fileInput) {
-      fileInput.value = '';
-    }
-  }
-
-  handlePublish() {
-    console.log('CreatePostModal: Publishing post');
-    
-    const title = document.getElementById('post-title')?.value;
-    const description = document.getElementById('post-description')?.value;
-    
-    if (!title || !title.trim()) {
-      alert('Please enter a title for your post');
-      return;
-    }
-    
-    if (!this.previewUrl) {
-      alert('Please upload an image for your post');
-      return;
+    const artworkId = res.data?.id;
+    if (artworkId && tagNames.length) {
+      await this._applyTagsToArtwork(artworkId, tagNames);
     }
 
-    const user = stateManager.getState().currentUser;
-    
-    const newPost = {
-      id: Date.now(),
-      type: this.selectedType,
-      image: this.previewUrl,
-      thumbnail: this.previewUrl,
-      cover: this.previewUrl,
-      artist: user.name,
-      avatar: user.avatar,
-      likes: 0,
-      title: title.trim(),
-      description: description.trim() || 'No description',
-      views: this.selectedType === 'video' ? '0' : undefined,
-      duration: this.selectedType === 'video' ? '0:00' : 
-                this.selectedType === 'podcast' ? '0 min' : undefined,
-      readTime: this.selectedType === 'article' ? '1 min read' : undefined
-    };
-
-    console.log('CreatePostModal: New post created:', newPost);
-
-    if (this.onSubmit) {
-      this.onSubmit(newPost);
-    }
-
+    const user = stateManager.getState().user ?? stateManager.getState().currentUser;
+    if (this.onSubmit) this.onSubmit({
+      id:          artworkId,
+      type:        this.selectedType,
+      image:       mediaUrl,
+      thumbnail:   mediaUrl,
+      artist:      user?.name || user?.username || 'You',
+      avatar:      user?.avatar || '',
+      likes:       0,
+      title,
+      description,
+    });
+    toast.success('Post published!');
     this.close();
   }
 
-  close() {
-    console.log('CreatePostModal: Closing');
-    const modalContainer = document.getElementById('create-post-modal');
-    if (modalContainer) {
-      modalContainer.innerHTML = '';
+  async _publishArticle(title, tagNames) {
+    const coverUrl    = await this._resolveArticleCover();
+    const articleBody = document.getElementById('cpm-article-body')?.value?.trim() ?? '';
+    if (!articleBody) {
+      toast.error('Please write the article body.');
+      document.getElementById('cpm-publish-btn').disabled = false;
+      document.getElementById('cpm-publish-btn').textContent = 'Publish';
+      return;
     }
-    if (this.onClose) {
-      this.onClose();
+
+    const description = document.getElementById('cpm-desc')?.value?.trim() || '';
+    const res = await api.blogPosts.create({
+      title,
+      body:                articleBody,
+      featured_image_url:  coverUrl || null,
+      status:              'published',
+      tags:                tagNames,
+    });
+
+    const postId = res.data?.id;
+    toast.success('Article published!');
+    this.close();
+
+    if (this.onSubmit) this.onSubmit({
+      id:          postId,
+      type:        'article',
+      title,
+      description: description || articleBody.slice(0, 120) + (articleBody.length > 120 ? '…' : ''),
+      image:       coverUrl || null,
+    });
+  }
+
+  async _applyTagsToArtwork(artworkId, names) {
+    for (const name of names) {
+      try {
+        const tagRes = await api.tags.upsert(name);
+        const tagId  = tagRes.data?.id;
+        if (tagId) await api.tags.addToArtwork(artworkId, tagId);
+      } catch { /* non-fatal */ }
     }
   }
 
+  /** Returns a URL string for the media, uploading a file first if needed. */
+  async _resolveMediaUrl() {
+    if (this.selectedType === 'photo') {
+      if (!this.uploadedFile) return null;
+      const uploadRes = await api.upload(this.uploadedFile);
+      return uploadRes.data?.url || null;
+    }
+    const urlInput = document.getElementById('cpm-media-url');
+    return urlInput?.value?.trim() || null;
+  }
+
+  async _resolveArticleCover() {
+    if (!this.uploadedFile) return null;
+    const uploadRes = await api.upload(this.uploadedFile);
+    return uploadRes.data?.url || null;
+  }
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+  afterRender() {
+    super.afterRender();
+    this._renderFields();
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  close() {
+    if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
+    const container = document.getElementById('create-post-modal');
+    if (container) container.innerHTML = '';
+    document.body.style.overflow = '';
+    if (this.onClose) this.onClose();
+  }
+
   mount() {
-    console.log('CreatePostModal: mount() called');
     let container = document.getElementById('create-post-modal');
-    
     if (!container) {
-      console.log('CreatePostModal: Creating create-post-modal container');
       container = document.createElement('div');
       container.id = 'create-post-modal';
       document.body.appendChild(container);
     }
-
     container.innerHTML = '';
-    const element = this.render();
-    container.appendChild(element);
+    document.body.style.overflow = 'hidden';
+    container.appendChild(this.render());
     this.afterRender();
   }
 }
-

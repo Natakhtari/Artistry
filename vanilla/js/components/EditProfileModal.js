@@ -1,6 +1,8 @@
 import { Component } from './Component.js';
 import { stateManager } from '../utils/state.js';
 import { router } from '../router.js';
+import { api } from '../utils/api.js';
+import { toast } from '../utils/toast.js';
 
 export class EditProfileModal extends Component {
   constructor(onClose) {
@@ -11,7 +13,7 @@ export class EditProfileModal extends Component {
 
   render() {
     const backdrop = this.createElement('div', {
-      className: 'fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in'
+      className: 'fixed inset-0 bg-black/80 z-[10001] flex items-center justify-center p-4 animate-fade-in'
     });
     backdrop.addEventListener('click', (e) => {
       if (e.target === e.currentTarget) this.close();
@@ -109,6 +111,7 @@ export class EditProfileModal extends Component {
     cancelBtn.addEventListener('click', () => this.close());
 
     const saveBtn = this.createElement('button', {
+      id:        'edit-profile-save-btn',
       className: 'px-6 py-2 bg-primary hover:bg-primary-hover rounded-lg transition-colors'
     }, 'Save Changes');
     saveBtn.addEventListener('click', () => this.save());
@@ -153,9 +156,33 @@ export class EditProfileModal extends Component {
     return group;
   }
 
-  save() {
-    alert('Profile saved! (This would save to a backend in a real app)');
-    this.close();
+  async save() {
+    const nameVal     = document.getElementById('name')?.value?.trim() ?? '';
+    const usernameVal = document.getElementById('username')?.value?.trim().replace(/^@/, '') ?? '';
+    const bio         = document.querySelector('textarea')?.value?.trim() ?? '';
+    const saveBtn     = document.getElementById('edit-profile-save-btn');
+
+    if (!nameVal) { toast.error('Name cannot be empty.'); return; }
+    if (usernameVal && usernameVal.length < 3) { toast.error('Username must be at least 3 characters.'); return; }
+
+    const parts     = nameVal.split(/\s+/);
+    const firstName = parts[0] ?? '';
+    const lastName  = parts.slice(1).join(' ') || '';
+
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+
+    const payload = { bio, first_name: firstName, last_name: lastName };
+    if (usernameVal) payload.username = usernameVal;
+
+    try {
+      const res = await api.users.updateProfile(payload);
+      stateManager.setUser(res.data);
+      toast.success('Profile updated!');
+      this.close();
+    } catch (err) {
+      toast.error(err.message || 'Could not save profile.');
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
+    }
   }
 
   close() {
@@ -167,6 +194,7 @@ export class EditProfileModal extends Component {
     } else {
       console.log('EditProfileModal: Container not found');
     }
+    document.body.style.overflow = '';
     if (this.onClose) {
       console.log('EditProfileModal: Calling onClose callback');
       this.onClose();
@@ -183,6 +211,7 @@ export class EditProfileModal extends Component {
     }
 
     container.innerHTML = '';
+    document.body.style.overflow = 'hidden';
     const element = this.render();
     container.appendChild(element);
     this.afterRender();

@@ -1,10 +1,18 @@
 import { Component } from './Component.js';
+import { api } from '../utils/api.js';
 
 export class NewsPage extends Component {
+  constructor() {
+    super('news-page');
+    this.articles  = [];
+    this.loading   = true;
+    this.activeTab = 'all';
+    this.categories = [];
+  }
+
   render() {
     const container = this.createElement('div', {
-      className:
-        'min-h-screen pb-16 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-20'
+      className: 'min-h-screen pb-16 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-20'
     });
 
     const contentContainer = this.createElement('div', {
@@ -12,154 +20,173 @@ export class NewsPage extends Component {
     });
 
     // Header
-    const header = this.createElement('div', {
-      className: 'mb-2 md:mb-4'
-    });
-
-    const title = this.createElement('h1', {
+    const header = this.createElement('div', { className: 'mb-6' });
+    header.appendChild(this.createElement('h1', {
       className: 'text-2xl md:text-3xl font-bold leading-tight'
-    }, 'Artistry News & Creator Resources');
+    }, 'Artistry News & Creator Resources'));
+    header.appendChild(this.createElement('p', {
+      className: 'text-slate-400 text-xs md:text-sm mt-0.5 leading-snug'
+    }, 'Portfolio tips, pricing commissions, and art industry news.'));
 
-    const subtitle = this.createElement('p', {
-      className: 'text-slate-400 text-xs md:text-sm mt-0.5 md:mt-1 leading-snug'
-    }, 'Portfolio tips, pricing commissions, and art industry news.');
+    // Category filter bar
+    const filterBar = this.createElement('div', {
+      id:        'news-filter-bar',
+      className: 'flex gap-2 flex-wrap mb-6'
+    });
+    this._buildFilterPill(filterBar, 'all', 'All');
 
-    header.appendChild(title);
-    header.appendChild(subtitle);
-
-    // News Grid
+    // Articles grid
     const grid = this.createElement('div', {
+      id:        'news-grid',
       className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
     });
 
-    const articles = [
-      {
-        id: 1,
-        image: 'https://cdn.pixabay.com/photo/2016/11/29/03/53/architecture-1867187_960_720.jpg',
-        category: 'EXHIBITION',
-        title: 'Modern Art Gallery Opens Downtown',
-        excerpt: 'A new contemporary art space showcases emerging artists...',
-        date: 'Dec 8, 2024',
-        readTime: '5 min read'
-      },
-      {
-        id: 2,
-        image: 'https://cdn.pixabay.com/photo/2018/03/10/12/00/teamwork-3213924_960_720.jpg',
-        category: 'INTERVIEW',
-        title: 'Artist Spotlight: Digital Renaissance',
-        excerpt: 'We sit down with leading digital artists to discuss...',
-        date: 'Dec 7, 2024',
-        readTime: '8 min read'
-      },
-      {
-        id: 3,
-        image: 'https://cdn.pixabay.com/photo/2017/08/01/08/29/woman-2563491_960_720.jpg',
-        category: 'TRENDS',
-        title: '2024 Art Market Trends',
-        excerpt: 'Analysis of the biggest trends shaping the art world...',
-        date: 'Dec 6, 2024',
-        readTime: '6 min read'
-      },
-      {
-        id: 4,
-        image: 'https://cdn.pixabay.com/photo/2016/11/18/17/46/house-1836070_960_720.jpg',
-        category: 'TECHNIQUE',
-        title: 'Mastering Color Theory',
-        excerpt: 'Essential tips for working with color in your art...',
-        date: 'Dec 5, 2024',
-        readTime: '10 min read'
-      },
-      {
-        id: 5,
-        image: 'https://cdn.pixabay.com/photo/2016/11/29/09/32/concept-1868728_960_720.jpg',
-        category: 'NEWS',
-        title: 'International Art Fair Announced',
-        excerpt: 'Major art fair coming to the city next month...',
-        date: 'Dec 4, 2024',
-        readTime: '4 min read'
-      },
-      {
-        id: 6,
-        image: 'https://cdn.pixabay.com/photo/2015/01/08/18/29/entrepreneur-593358_960_720.jpg',
-        category: 'GUIDE',
-        title: 'Starting Your Art Collection',
-        excerpt: 'A beginner\'s guide to collecting contemporary art...',
-        date: 'Dec 3, 2024',
-        readTime: '7 min read'
-      }
-    ];
-
-    articles.forEach(article => {
-      const card = this.createArticleCard(article);
-      grid.appendChild(card);
-    });
+    const loadingEl = this.createElement('div', {
+      id:        'news-loading',
+      className: 'col-span-3 text-center py-16 text-slate-400'
+    }, 'Loading news…');
+    grid.appendChild(loadingEl);
 
     contentContainer.appendChild(header);
+    contentContainer.appendChild(filterBar);
     contentContainer.appendChild(grid);
     container.appendChild(contentContainer);
 
     return container;
   }
 
-  createArticleCard(article) {
-    const card = this.createElement('div', {
-      className: 'group cursor-pointer'
+  afterRender() {
+    super.afterRender();
+    this._loadNews();
+  }
+
+  async _loadNews() {
+    try {
+      const [newsRes, catsRes] = await Promise.all([
+        api.news.list({ limit: 30 }),
+        api.news.categories(),
+      ]);
+
+      this.articles   = newsRes?.data?.items  ?? [];
+      this.categories = catsRes?.data?.items  ?? [];
+
+      this._populateFilters();
+      this._renderGrid();
+    } catch {
+      const loading = document.getElementById('news-loading');
+      if (loading) loading.textContent = 'Could not load news. Please try again later.';
+    }
+  }
+
+  _populateFilters() {
+    const bar = document.getElementById('news-filter-bar');
+    if (!bar) return;
+    this.categories.forEach(cat => this._buildFilterPill(bar, cat, cat));
+  }
+
+  _buildFilterPill(bar, value, label) {
+    const btn = this.createElement('button', {
+      'data-cat': value,
+      className: this._pillClass(value),
+    }, label);
+    btn.addEventListener('click', () => this._setFilter(value));
+    bar.appendChild(btn);
+  }
+
+  _pillClass(value) {
+    const active = value === this.activeTab;
+    return `px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+      active
+        ? 'bg-primary text-white'
+        : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+    }`;
+  }
+
+  _setFilter(value) {
+    this.activeTab = value;
+    document.querySelectorAll('[data-cat]').forEach(btn => {
+      btn.className = this._pillClass(btn.dataset.cat);
+    });
+    this._renderGrid();
+  }
+
+  _renderGrid() {
+    const grid = document.getElementById('news-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const filtered = this.activeTab === 'all'
+      ? this.articles
+      : this.articles.filter(a => a.category === this.activeTab);
+
+    if (filtered.length === 0) {
+      grid.appendChild(this.createElement('p', {
+        className: 'col-span-3 text-center py-16 text-slate-400'
+      }, 'No articles found.'));
+      return;
+    }
+
+    filtered.forEach(article => grid.appendChild(this._createCard(article)));
+  }
+
+  _createCard(article) {
+    const card = this.createElement('div', { className: 'group cursor-pointer' });
+
+    const inner = this.createElement('div', {
+      className: 'bg-slate-800 rounded-2xl overflow-hidden hover:scale-[1.02] transition-all duration-300 h-full flex flex-col'
     });
 
-    const cardInner = this.createElement('div', {
-      className: 'bg-slate-800 rounded-2xl overflow-hidden hover:transform hover:scale-[1.02] transition-all duration-300 h-full flex flex-col'
-    });
-
-    // Image Container
-    const imageContainer = this.createElement('div', {
+    // Image
+    const imgWrap = this.createElement('div', {
       className: 'relative h-48 overflow-hidden bg-slate-700'
     });
 
-    const image = this.createElement('img', {
-      src: article.image,
-      alt: `${article.title} — ${article.category} article, Artistry news`,
-      className: 'w-full h-full object-cover group-hover:scale-110 transition-transform duration-300'
-    });
+    if (article.image_url) {
+      const img = this.createElement('img', {
+        src:       article.image_url,
+        alt:       `${article.title} — ${article.category ?? ''} article`,
+        className: 'w-full h-full object-cover group-hover:scale-110 transition-transform duration-300'
+      });
+      imgWrap.appendChild(img);
+    }
 
-    const category = this.createElement('span', {
-      className: 'absolute top-4 left-4 px-3 py-1 bg-primary text-xs font-bold rounded-full'
-    }, article.category);
-
-    imageContainer.appendChild(image);
-    imageContainer.appendChild(category);
+    if (article.category) {
+      const badge = this.createElement('span', {
+        className: 'absolute top-4 left-4 px-3 py-1 bg-primary text-xs font-bold rounded-full'
+      }, article.category);
+      imgWrap.appendChild(badge);
+    }
 
     // Content
-    const content = this.createElement('div', {
-      className: 'p-6 flex-1 flex flex-col'
-    });
-
-    const title = this.createElement('h3', {
+    const content = this.createElement('div', { className: 'p-6 flex-1 flex flex-col' });
+    content.appendChild(this.createElement('h3', {
       className: 'text-xl font-bold mb-2 group-hover:text-primary transition-colors'
-    }, article.title);
-
-    const excerpt = this.createElement('p', {
-      className: 'text-slate-400 text-sm mb-4 flex-1'
-    }, article.excerpt);
+    }, article.title));
+    content.appendChild(this.createElement('p', {
+      className: 'text-slate-400 text-sm mb-4 flex-1 line-clamp-3'
+    }, article.description || ''));
 
     const footer = this.createElement('div', {
       className: 'flex items-center justify-between text-xs text-slate-500'
     });
-
-    const date = this.createElement('span', {}, article.date);
-    const readTime = this.createElement('span', {}, article.readTime);
-
-    footer.appendChild(date);
-    footer.appendChild(readTime);
-
-    content.appendChild(title);
-    content.appendChild(excerpt);
+    const dateStr = article.published_at
+      ? new Date(article.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+      : '';
+    footer.appendChild(this.createElement('span', {}, dateStr));
+    if (article.source_name) {
+      footer.appendChild(this.createElement('span', {}, article.source_name));
+    }
     content.appendChild(footer);
 
-    cardInner.appendChild(imageContainer);
-    cardInner.appendChild(content);
-    card.appendChild(cardInner);
+    inner.appendChild(imgWrap);
+    inner.appendChild(content);
+    card.appendChild(inner);
+
+    // Open article URL in new tab if available
+    if (article.url) {
+      card.addEventListener('click', () => window.open(article.url, '_blank', 'noopener'));
+    }
 
     return card;
   }
 }
-

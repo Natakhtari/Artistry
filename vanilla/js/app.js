@@ -1,6 +1,7 @@
 // Main Application Entry Point
 import { router } from './router.js';
 import { stateManager } from './utils/state.js';
+import { api } from './utils/api.js';
 import { applyRouteSeo } from './utils/seo.js';
 import { Navigation } from './components/Navigation.js';
 import { LandingPage } from './components/LandingPage.js';
@@ -26,6 +27,15 @@ class App {
 
   init() {
     console.log('Init called');
+
+    // If we have a stored token, silently refresh the user profile in the background
+    if (stateManager.getToken()) {
+      api.auth.me().then(res => {
+        stateManager.setUser(res.data);
+      }).catch(() => {
+        stateManager.clearAuth();
+      });
+    }
     // Register all routes
     router.register('/', () => {
       console.log('Route handler: Landing page');

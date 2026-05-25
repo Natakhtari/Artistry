@@ -1,0 +1,47 @@
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: artistry_postgres
+    restart: unless-stopped
+    ports:
+      - "5442:5432"
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-artistry}
+      POSTGRES_USER:     ${DB_USER:-artistry}
+      POSTGRES_PASSWORD: ${DB_PASS:-artistry_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-artistry} -d ${DB_NAME:-artistry}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # ── PHP / Apache API ──────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: artistry_api
+    restart: unless-stopped
+    ports:
+      - "8742:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST:     postgres
+      DB_PORT:     5432
+      DB_NAME:     ${DB_NAME:-artistry}
+      DB_USER:     ${DB_USER:-artistry}
+      DB_PASS:     ${DB_PASS:-artistry_secret}
+      JWT_SECRET:  ${JWT_SECRET:-change_this_to_a_long_random_secret_min_32_chars}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8093}
+    volumes:
+      - ./backend/api:/var/www/html
+
+volumes:
+  postgres_data:

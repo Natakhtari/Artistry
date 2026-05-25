@@ -2,6 +2,7 @@ import { Component } from './Component.js';
 import { stateManager } from '../utils/state.js';
 import { avatars } from '../utils/avatars.js';
 import { router } from '../router.js';
+import { api } from '../utils/api.js';
 
 // JPEG photos only (no transparent PNGs). Verified Pixabay JPGs + Picsum seeds for variety.
 const PIXABAY_JPG = [
@@ -38,15 +39,15 @@ const PICSUM_SEEDS = [
 const FEED_IMAGE_POOL = [...PIXABAY_JPG, ...PICSUM_SEEDS];
 
 const CREATORS = [
-  { artist: 'Elena Rodriguez', avatar: avatars.elenaRodriguez },
-  { artist: 'Marcus Chen', avatar: avatars.marcusChen },
-  { artist: 'Sophia Laurent', avatar: avatars.sophiaLaurent },
-  { artist: 'Alex Kim', avatar: avatars.alexKim },
-  { artist: 'Yuki Tanaka', avatar: avatars.yukiTanaka },
-  { artist: 'Nina Patel', avatar: avatars.ninaPatel },
-  { artist: 'Carlos Santos', avatar: avatars.carlosSantos },
-  { artist: 'Aria Johnson', avatar: avatars.ariajohnson },
-  { artist: 'James Taylor', avatar: avatars.jamesTaylor }
+  { artist: 'Elena Rodriguez', username: 'elenarod',     avatar: avatars.elenaRodriguez },
+  { artist: 'Marcus Chen',     username: 'marcusc',      avatar: avatars.marcusChen },
+  { artist: 'Sophia Laurent',  username: 'sophial',      avatar: avatars.sophiaLaurent },
+  { artist: 'Alex Kim',        username: 'alexkim',      avatar: avatars.alexKim },
+  { artist: 'Yuki Tanaka',     username: 'yukitanaka',   avatar: avatars.yukiTanaka },
+  { artist: 'Nina Patel',      username: 'ninapatel',    avatar: avatars.ninaPatel },
+  { artist: 'Carlos Santos',   username: 'carlossantos', avatar: avatars.carlosSantos },
+  { artist: 'Aria Johnson',    username: 'ariajohnson',  avatar: avatars.ariajohnson },
+  { artist: 'James Taylor',    username: 'jamestaylor',  avatar: avatars.jamesTaylor },
 ];
 
 const TITLE_A = [
@@ -138,8 +139,9 @@ export class FeedPage extends Component {
     const base = {
       id,
       type,
-      artist: creator.artist,
-      avatar: creator.avatar,
+      artist:   creator.artist,
+      username: creator.username,
+      avatar:   creator.avatar,
       likes,
       title,
       description
@@ -359,8 +361,7 @@ export class FeedPage extends Component {
 
     avatarContainer.addEventListener('click', (e) => {
       e.stopPropagation();
-      console.log('Avatar clicked for artist:', item.artist);
-      this.openUserProfile(item.artist);
+      this.openUserProfile(item);
     });
 
     const avatar = this.createElement('img', {
@@ -375,8 +376,7 @@ export class FeedPage extends Component {
 
     artistName.addEventListener('click', (e) => {
       e.stopPropagation();
-      console.log('Artist name clicked:', item.artist);
-      this.openUserProfile(item.artist);
+      this.openUserProfile(item);
     });
 
     avatarContainer.appendChild(avatar);
@@ -464,27 +464,22 @@ export class FeedPage extends Component {
   }
 
   handleLike(itemId, currentLikes, buttonElement) {
-    console.log('FeedPage: handleLike called for item', itemId);
+    // Optimistic local toggle
     const result = stateManager.toggleLike(itemId, currentLikes);
-    console.log('FeedPage: Like result:', result);
 
-    const likeElement = document.getElementById(`likes-${itemId}`);
-    if (likeElement) {
-      likeElement.textContent = result.newLikes.toString();
-    }
+    const likeEl = document.getElementById(`likes-${itemId}`);
+    if (likeEl) likeEl.textContent = result.newLikes.toString();
 
     if (buttonElement) {
-      if (result.isLiked) {
-        buttonElement.classList.add('text-red-500');
-        buttonElement.classList.remove('text-slate-400');
-      } else {
-        buttonElement.classList.remove('text-red-500');
-        buttonElement.classList.add('text-slate-400');
-      }
+      buttonElement.classList.toggle('text-red-500', result.isLiked);
+      buttonElement.classList.toggle('text-slate-400', !result.isLiked);
     }
 
-    if (window.lucide) {
-      window.lucide.createIcons();
+    if (window.lucide) window.lucide.createIcons();
+
+    // Best-effort sync to backend (only for posts with a real DB id)
+    if (stateManager.getToken() && typeof itemId === 'number' && itemId < 2_000_000_000) {
+      api.likes.toggle('artwork', itemId).catch(() => { /* non-fatal */ });
     }
   }
 
@@ -499,10 +494,8 @@ export class FeedPage extends Component {
     console.log('FeedPage: Event dispatched');
   }
 
-  openUserProfile(artistName) {
-    const username = artistName.toLowerCase().replace(/\s+/g, '-');
-    console.log('Opening user profile for:', artistName, 'username:', username);
-    console.log('Navigating to:', `/user/${username}`);
-    router.navigate(`/user/${username}`);
+  openUserProfile(item) {
+    const username = item.username || item.artist_username || item.artist?.toLowerCase().replace(/\s+/g, '');
+    if (username) router.navigate(`/user/${username}`);
   }
 }

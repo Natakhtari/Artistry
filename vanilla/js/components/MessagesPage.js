@@ -79,7 +79,7 @@ export class MessagesPage extends Component {
     const mobile = this.isMobileViewport();
     const showList = !mobile || !this.selectedChat;
     const showChatPane = !mobile || !!this.selectedChat;
-    const fullscreen = !!this.selectedChat;
+    const fullscreen = mobile && !!this.selectedChat;
 
     // Open conversation: fixed full-screen layer above nav (immersive chat)
     const container = this.createElement('div', {
@@ -152,7 +152,7 @@ export class MessagesPage extends Component {
       router.navigate('/messages', true);
       return;
     }
-    if (this.selectedChat) {
+    if (this.isMobileViewport() && this.selectedChat) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';

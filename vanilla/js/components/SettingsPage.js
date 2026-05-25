@@ -1,6 +1,8 @@
 import { Component } from './Component.js';
 import { stateManager } from '../utils/state.js';
 import { router } from '../router.js';
+import { api } from '../utils/api.js';
+import { toast } from '../utils/toast.js';
 
 export class SettingsPage extends Component {
   render() {
@@ -201,24 +203,20 @@ export class SettingsPage extends Component {
   }
 
   saveSetting(id) {
-    console.log('Saving setting:', id);
-    // Show a brief success message
-    const message = this.createElement('div', {
-      className: 'fixed bottom-24 md:bottom-8 right-8 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg animate-slide-up'
-    }, '✓ Saved');
-    
-    document.body.appendChild(message);
-    
-    setTimeout(() => {
-      message.remove();
-    }, 2000);
+    toast.success('Saved');
   }
 
-  logout() {
-    if (confirm('Are you sure you want to log out?')) {
-      stateManager.setState({ isAuthenticated: false });
-      router.navigate('/auth');
-    }
+  async logout() {
+    const confirmed = await toast.confirm('Are you sure you want to log out?', {
+      confirmLabel: 'Log Out',
+      cancelLabel: 'Cancel',
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    try { await api.auth.logout(); } catch { /* best effort */ }
+    stateManager.clearAuth();
+    router.navigate('/');
   }
 }
 

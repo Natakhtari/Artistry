@@ -2,6 +2,7 @@ import { Component } from './Component.js';
 import { stateManager } from '../utils/state.js';
 import { router } from '../router.js';
 import { EditProfileModal } from './EditProfileModal.js';
+import { api } from '../utils/api.js';
 
 export class ProfilePage extends Component {
   render() {
@@ -53,16 +54,25 @@ export class ProfilePage extends Component {
     });
 
     const avatarInner = this.createElement('div', {
-      className: 'w-full h-full rounded-full overflow-hidden bg-slate-700 border-4 border-slate-900'
+      className: 'w-full h-full rounded-full overflow-hidden bg-slate-700 border-4 border-slate-900 flex items-center justify-center'
     });
 
-    const avatar = this.createElement('img', {
-      src: user.avatar,
-      alt: `Profile photo of ${user.name}, Artistry creator`,
-      className: 'w-full h-full object-cover'
-    });
+    if (user.avatar) {
+      const avatar = this.createElement('img', {
+        src: user.avatar,
+        alt: `Profile photo of ${user.name}`,
+        className: 'w-full h-full object-cover'
+      });
+      avatarInner.appendChild(avatar);
+    } else {
+      const initials = (user.name || user.username || '?')
+        .split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+      const initialsEl = this.createElement('span', {
+        className: 'text-4xl font-bold text-slate-300 select-none'
+      }, initials);
+      avatarInner.appendChild(initialsEl);
+    }
 
-    avatarInner.appendChild(avatar);
     avatarRing.appendChild(avatarInner);
     avatarContainer.appendChild(avatarRing);
 
@@ -89,8 +99,8 @@ export class ProfilePage extends Component {
     }, user.username);
 
     const bio = this.createElement('p', {
-      className: 'text-slate-300 mb-6 max-w-2xl'
-    }, user.bio);
+      className: `text-slate-300 mb-6 max-w-2xl ${user.bio ? '' : 'italic text-slate-500'}`
+    }, user.bio || 'No bio yet — click Edit Profile to add one');
 
     // Stats in cards
     const statsContainer = this.createElement('div', {
@@ -98,9 +108,9 @@ export class ProfilePage extends Component {
     });
 
     const statsData = [
-      { label: 'Artworks', value: user.artworks, icon: 'image' },
-      { label: 'Followers', value: user.followers, icon: 'users' },
-      { label: 'Following', value: user.following, icon: 'user-plus' }
+      { label: 'Artworks',  value: user.artworks  || 0, icon: 'image',    id: 'stat-artworks' },
+      { label: 'Followers', value: user.followers || 0, icon: 'users',    id: 'stat-followers' },
+      { label: 'Following', value: user.following  || 0, icon: 'user-plus', id: 'stat-following' },
     ];
 
     statsData.forEach(stat => {
@@ -108,13 +118,12 @@ export class ProfilePage extends Component {
         className: 'bg-slate-800/50 rounded-xl p-4 text-center border border-slate-700 hover:border-primary transition-colors cursor-pointer'
       });
 
-      const icon = this.createIcon(stat.icon, 'w-5 h-5 mx-auto mb-2 text-primary');
+      const icon  = this.createIcon(stat.icon, 'w-5 h-5 mx-auto mb-2 text-primary');
       const value = this.createElement('div', {
-        className: 'text-2xl font-bold mb-1'
+        className: 'text-2xl font-bold mb-1',
+        id: stat.id,
       }, stat.value.toString());
-      const label = this.createElement('div', {
-        className: 'text-sm text-slate-400'
-      }, stat.label);
+      const label = this.createElement('div', { className: 'text-sm text-slate-400' }, stat.label);
 
       statCard.appendChild(icon);
       statCard.appendChild(value);
@@ -202,70 +211,85 @@ export class ProfilePage extends Component {
   }
 
   createPortfolio() {
+    const wrapper = this.createElement('div', { id: 'portfolio-wrapper' });
+
+    // Loading skeleton
+    const loading = this.createElement('div', {
+      className: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4',
+      id: 'portfolio-loading'
+    });
+    for (let i = 0; i < 4; i++) {
+      const skel = this.createElement('div', {
+        className: 'aspect-square bg-slate-800 rounded-xl animate-pulse'
+      });
+      loading.appendChild(skel);
+    }
+
+    wrapper.appendChild(loading);
+    return wrapper;
+  }
+
+  renderArtworkGrid(artworks) {
+    const wrapper = document.getElementById('portfolio-wrapper');
+    if (!wrapper) return;
+    wrapper.innerHTML = '';
+
+    if (!artworks || artworks.length === 0) {
+      const empty = this.createElement('div', {
+        className: 'col-span-full flex flex-col items-center justify-center py-20 text-slate-400'
+      });
+      const icon = this.createIcon('image', 'w-16 h-16 mb-4 opacity-30');
+      const msg  = this.createElement('p', { className: 'text-lg font-medium mb-1' }, 'No artworks yet');
+      const sub  = this.createElement('p', { className: 'text-sm' }, 'Upload your first artwork to get started');
+      empty.appendChild(icon);
+      empty.appendChild(msg);
+      empty.appendChild(sub);
+      wrapper.appendChild(empty);
+      return;
+    }
+
     const grid = this.createElement('div', {
       className: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
     });
 
-    // User's own artworks with data for lightbox
-    const artworks = [
-      { id: 101, image: 'https://cdn.pixabay.com/photo/2018/01/14/23/12/nature-3082832_960_720.jpg', title: 'Abstract Dreams', description: 'Exploring vibrant colors and forms' },
-      { id: 102, image: 'https://cdn.pixabay.com/photo/2017/02/01/22/02/mountain-landscape-2031539_960_720.jpg', title: 'UrbanScape', description: 'City life in motion' },
-      { id: 103, image: 'https://cdn.pixabay.com/photo/2015/12/01/20/28/road-1072821_960_720.jpg', title: 'Nature\'s Canvas', description: 'Beauty in simplicity' },
-      { id: 104, image: 'https://cdn.pixabay.com/photo/2016/11/29/05/45/astronomy-1867616_960_720.jpg', title: 'Digital Fusion', description: 'Where tech meets art' },
-      { id: 105, image: 'https://cdn.pixabay.com/photo/2015/06/19/21/24/the-road-815297_960_720.jpg', title: 'Minimalist View', description: 'Less is more' },
-      { id: 106, image: 'https://cdn.pixabay.com/photo/2018/08/14/13/23/ocean-3605547_960_720.jpg', title: 'Color Symphony', description: 'A dance of hues' },
-      { id: 107, image: 'https://cdn.pixabay.com/photo/2016/05/05/02/37/sunset-1373171_960_720.jpg', title: 'Modern Art', description: 'Contemporary expression' },
-      { id: 108, image: 'https://cdn.pixabay.com/photo/2017/12/15/13/51/polynesia-3021072_960_720.jpg', title: 'Artistic Vision', description: 'Through the lens' },
-      { id: 109, image: 'https://cdn.pixabay.com/photo/2015/04/23/22/00/tree-736885_960_720.jpg', title: 'Creative Flow', description: 'Letting ideas flow' }
-    ];
+    const user = stateManager.getState().currentUser;
 
     artworks.forEach((artwork) => {
-      const likes = Math.floor(Math.random() * 500 + 100);
-      const comments = Math.floor(Math.random() * 50 + 10);
-
       const card = this.createElement('div', {
         className: 'aspect-square bg-slate-800 rounded-xl overflow-hidden cursor-pointer hover:scale-105 transition-all relative group'
       });
+
       card.addEventListener('click', () => this.openArtworkLightbox({
-        ...artwork,
-        artist: stateManager.getState().currentUser.name,
-        avatar: stateManager.getState().currentUser.avatar,
-        likes,
-        comments,
-        isLiked: false
+        id:          artwork.id,
+        image:       artwork.thumbnail,
+        title:       artwork.title,
+        description: artwork.description || '',
+        artist:      user.name,
+        avatar:      user.avatar,
+        likes:       artwork.likes_count   || 0,
+        comments:    artwork.comments_count || 0,
+        isLiked:     false
       }));
 
-      const artistName = stateManager.getState().currentUser.name;
       const image = this.createElement('img', {
-        src: artwork.image,
-        alt: `${artwork.title} — portfolio artwork by ${artistName} on Artistry`,
+        src:       artwork.thumbnail,
+        alt:       `${artwork.title} — portfolio artwork by ${user.name} on Artistry`,
         className: 'w-full h-full object-cover'
       });
 
-      // Overlay with stats
       const overlay = this.createElement('div', {
         className: 'absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4'
       });
 
-      const stats = this.createElement('div', {
-        className: 'flex items-center justify-between'
-      });
+      const stats = this.createElement('div', { className: 'flex items-center justify-between' });
 
-      const likesDiv = this.createElement('div', {
-        className: 'flex items-center gap-1 text-white'
-      });
-      const heartIcon = this.createIcon('heart', 'w-5 h-5');
-      const likeCount = this.createElement('span', { className: 'font-medium' }, likes.toString());
-      likesDiv.appendChild(heartIcon);
-      likesDiv.appendChild(likeCount);
+      const likesDiv = this.createElement('div', { className: 'flex items-center gap-1 text-white' });
+      likesDiv.appendChild(this.createIcon('heart', 'w-5 h-5'));
+      likesDiv.appendChild(this.createElement('span', { className: 'font-medium' }, String(artwork.likes_count || 0)));
 
-      const commentsDiv = this.createElement('div', {
-        className: 'flex items-center gap-1 text-white'
-      });
-      const commentIcon = this.createIcon('message-circle', 'w-5 h-5');
-      const commentCount = this.createElement('span', { className: 'font-medium' }, comments.toString());
-      commentsDiv.appendChild(commentIcon);
-      commentsDiv.appendChild(commentCount);
+      const commentsDiv = this.createElement('div', { className: 'flex items-center gap-1 text-white' });
+      commentsDiv.appendChild(this.createIcon('message-circle', 'w-5 h-5'));
+      commentsDiv.appendChild(this.createElement('span', { className: 'font-medium' }, String(artwork.comments_count || 0)));
 
       stats.appendChild(likesDiv);
       stats.appendChild(commentsDiv);
@@ -276,7 +300,34 @@ export class ProfilePage extends Component {
       grid.appendChild(card);
     });
 
-    return grid;
+    wrapper.appendChild(grid);
+  }
+
+  afterRender() {
+    super.afterRender();
+    const userId = stateManager.getState().currentUser?._raw?.id;
+    if (!userId) return;
+
+    // Load stats
+    api.users.stats(userId).then(res => {
+      const s = res.data;
+      const map = {
+        'stat-artworks':  s.total_artworks,
+        'stat-followers': s.followers_count,
+        'stat-following': s.following_count,
+      };
+      Object.entries(map).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = Number(val).toLocaleString();
+      });
+    }).catch(() => { /* stats are non-critical */ });
+
+    // Load real artworks for this user
+    api.artworks.list({ user_id: userId, limit: 50 }).then(res => {
+      this.renderArtworkGrid(res.data?.items || []);
+    }).catch(() => {
+      this.renderArtworkGrid([]);
+    });
   }
 
   openArtworkLightbox(artwork) {
