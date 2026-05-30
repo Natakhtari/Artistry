@@ -1,0 +1,9 @@
+{
+  "name": "artistry-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Placeholder so Cloudflare Pages npm ci succeeds; frontend is static in vanilla/.",
+  "scripts": {
+    "build": "node -e \"process.exit(0)\""
+  }
+}

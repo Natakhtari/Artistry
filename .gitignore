@@ -1,0 +1,12 @@
+# Local env (secrets) — never commit
+.env
+.env.local
+.env.*.local
+
+# Filled-in Render env for bulk import (use render.env.template in repo instead)
+render.env
+backend/render.env
+
+# OS / editor
+.DS_Store
+Thumbs.db

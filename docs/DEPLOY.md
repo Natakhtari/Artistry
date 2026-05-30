@@ -9,16 +9,17 @@
 5. **Render — sign up** at [render.com](https://render.com) → link GitHub.
 6. **Render — New Web Service** → pick this repo.
 7. **Render — settings:** Root directory **`backend`**, Dockerfile path **`Dockerfile.deploy`**, plan **Free**.
-8. **Render — Environment** → add every variable in the table in [§2 API](#2-api-render--docker) (especially `DB_SSLMODE=require`, `JWT_SECRET`, `CORS_ORIGIN`).
+8. **Render — Environment** → add variables from **`backend/render.env.template`**: copy that file, replace Neon host / password / JWT / `CORS_ORIGIN`, then in Render → **Environment** use **Add from .env** (or paste `KEY=value` lines). See [§2 API](#2-api-render--docker) for the full table.
 9. **Render — note the URL** after first successful deploy, e.g. `https://artistry-api-xxxx.onrender.com`.
 10. **Cloudflare — Pages** → [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create** → **Pages** → Connect Git → same repo.
-11. **Cloudflare — build:** Framework **None**, build command **empty**, output directory **`vanilla`**.
-12. **Cloudflare — deploy** → copy site URL, e.g. `https://artistry-web.pages.dev`.
-13. **Render — fix CORS:** set `CORS_ORIGIN` to that Pages URL **exactly** (https, no trailing `/`) → **Save** (triggers redeploy).
-14. **Your laptop — edit `vanilla/index.html`:** uncomment the `ARTISTRY_API_BASE` line and set it to `https://YOUR-API.onrender.com/api` (same host as step 9, must end with `/api`).
-15. **Git:** commit and push so Cloudflare rebuilds Pages.
-16. **Browser — test:** open the Pages URL → register or log in → feed loads without CORS errors.
-17. **If login fails:** open DevTools → Network; fix `CORS_ORIGIN` or `ARTISTRY_API_BASE` until `/api/auth/login` returns 200.
+11. **Cloudflare — build:** Framework **None**. **Build command:** `exit 0` (static site; avoids npm). **Build output directory:** `vanilla`.
+12. **Cloudflare — Environment variable:** add **`SKIP_DEPENDENCY_INSTALL`** = **`1`** so Pages skips `npm clean-install` (optional but faster). If you skip it, the repo root includes a minimal **`package.json`** + **`package-lock.json`** so npm can succeed anyway.
+13. **Cloudflare — deploy** → copy site URL, e.g. `https://artistry-web.pages.dev`.
+14. **Render — fix CORS:** set `CORS_ORIGIN` to that Pages URL **exactly** (https, no trailing `/`) → **Save** (triggers redeploy).
+15. **Your laptop — edit `vanilla/index.html`:** uncomment the `ARTISTRY_API_BASE` line and set it to `https://YOUR-API.onrender.com/api` (same host as step 9, must end with `/api`).
+16. **Git:** commit and push so Cloudflare rebuilds Pages.
+17. **Browser — test:** open the Pages URL → register or log in → feed loads without CORS errors.
+18. **If login fails:** open DevTools → Network; fix `CORS_ORIGIN` or `ARTISTRY_API_BASE` until `/api/auth/login` returns 200.
 
 **Order matters:** you need a placeholder `CORS_ORIGIN` before the API works from the browser. If Pages is not created yet, temporarily set `CORS_ORIGIN` to `http://localhost:8093`, deploy the API, then after you have the Pages URL update `CORS_ORIGIN` and redeploy the API.
 
@@ -92,9 +93,11 @@ After deploy, note the service URL, e.g. `https://artistry-api.onrender.com`.
 2. **Project name:** e.g. `artistry-web`
 3. **Build settings:**
    - **Framework preset:** None
-   - **Build command:** *(leave empty)* — static site
+   - **Build command:** `exit 0` — static files only; Cloudflare recommends this for plain HTML/JS (see [Static HTML](https://developers.cloudflare.com/pages/framework-guides/deploy-anything/)).
    - **Build output directory:** `vanilla`
-4. **Environment variables:** not required for build if you inject the API URL in HTML (next step).
+4. **Environment variables (Pages → Settings → Environment variables):**
+   - **`SKIP_DEPENDENCY_INSTALL`** = **`1`** — skips `npm clean-install` (optional). Without it, root **`package.json`** / **`package-lock.json`** let npm finish in seconds (no real dependencies).
+   - The API URL is set in `index.html` (`ARTISTRY_API_BASE`), not here, unless you prefer a build-time variable.
 5. After first deploy, copy the site URL, e.g. `https://artistry-web.pages.dev`.
 
 ### Point the app at your API
@@ -170,10 +173,9 @@ GitHub Pages is `https://username.github.io/repo/` — add that exact origin to 
 
 ## Troubleshooting
 
-| Symptom | Likely cause |
-|---------|----------------|
+| Cloudflare: `npm error ENOENT package.json` | Set **`SKIP_DEPENDENCY_INSTALL`** = **`1`** and build command **`exit 0`**; output dir **`vanilla`**. |
+| Cloudflare: `npm ci` / missing or invalid `package-lock.json` | Pull latest repo: root **`package.json`** + **`package-lock.json`** are a minimal no-deps project so `npm clean-install` succeeds. Or set **`SKIP_DEPENDENCY_INSTALL`**=`1` and redeploy. |
 | Browser: CORS error | `CORS_ORIGIN` mismatch (www vs non-www, http vs https) |
-| API: DB connection failed | Wrong `DB_HOST` / SSL; Neon needs SSL on port 5432 |
 | 401 on everything | JWT or clock skew; clear `localStorage` and log in again |
 | Uploads disappear | Free Render disk is ephemeral — use object storage for production |
 
