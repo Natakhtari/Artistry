@@ -33,6 +33,7 @@ require_once $src . '/controllers/CommentController.php';
 require_once $src . '/controllers/BlogPostController.php';
 require_once $src . '/controllers/TagController.php';
 require_once $src . '/controllers/NewsController.php';
+require_once $src . '/controllers/MessageController.php';
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 $jwtSecret = getenv('JWT_SECRET') ?: '';
@@ -71,6 +72,7 @@ $router->get('/feed', [$feed_c, 'index'], [$auth]);
 
 // Users
 $user_c = new UserController();
+$router->get(   '/users',                        [$user_c, 'index']);
 $router->get(   '/users/by-username/{username}', [$user_c, 'showByUsername']);
 $router->get(   '/users/{id}',                   [$user_c, 'show']);
 $router->get(   '/users/{id}/stats',             [$user_c, 'stats']);
@@ -123,6 +125,14 @@ $router->delete('/blog-posts/{id}/tags/{tagId}', [$tag_c, 'removeFromBlogPost'],
 $news_c = new NewsController();
 $router->get('/news',            [$news_c, 'index']);
 $router->get('/news/categories', [$news_c, 'categories']);
+
+// Direct Messages
+$msg_c = new MessageController();
+$router->get( '/messages/conversations',        [$msg_c, 'conversations'], [$auth]);
+$router->post('/messages/react/{messageId}',    [$msg_c, 'react'],         [$auth]);
+$router->get( '/messages/{userId}',             [$msg_c, 'thread'],        [$auth]);
+$router->post('/messages/{userId}',             [$msg_c, 'send'],          [$auth]);
+$router->get( '/messages/{userId}/poll',        [$msg_c, 'poll'],          [$auth]);
 
 // ── Dispatch ──────────────────────────────────────────────────────────────────
 $router->dispatch();

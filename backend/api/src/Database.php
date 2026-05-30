@@ -17,6 +17,15 @@ class Database
 
             $dsn = "pgsql:host={$host};port={$port};dbname={$name}";
 
+            // Neon, Supabase, and most cloud Postgres require TLS
+            $sslMode = getenv('DB_SSLMODE') ?: '';
+            if ($sslMode !== '') {
+                $allowed = ['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full'];
+                if (in_array($sslMode, $allowed, true)) {
+                    $dsn .= ';sslmode=' . $sslMode;
+                }
+            }
+
             self::$instance = new PDO($dsn, $user, $pass, [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

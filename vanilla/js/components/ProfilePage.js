@@ -265,7 +265,9 @@ export class ProfilePage extends Component {
         title:       artwork.title,
         description: artwork.description || '',
         artist:      user.name,
-        avatar:      user.avatar,
+        username:    user._raw?.username || user.username?.replace(/^@/, ''),
+        avatar:      user.avatar || null,
+        created_at:  artwork.created_at,
         likes:       artwork.likes_count   || 0,
         comments:    artwork.comments_count || 0,
         isLiked:     false

@@ -1,501 +1,417 @@
 import { Component } from './Component.js';
 import { stateManager } from '../utils/state.js';
-import { avatars } from '../utils/avatars.js';
 import { router } from '../router.js';
 import { api } from '../utils/api.js';
+import { toast } from '../utils/toast.js';
 
-// JPEG photos only (no transparent PNGs). Verified Pixabay JPGs + Picsum seeds for variety.
-const PIXABAY_JPG = [
-  'https://cdn.pixabay.com/photo/2018/03/10/12/00/teamwork-3213924_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2017/08/30/01/05/milky-way-2695569_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2016/11/18/17/46/house-1836070_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2016/11/29/03/53/architecture-1867187_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2016/11/29/09/32/concept-1868728_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2015/01/08/18/29/entrepreneur-593358_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2016/11/29/12/13/fence-1869401_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2017/02/08/17/46/sunset-2048727_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2016/11/29/02/05/audience-1866738_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2016/11/23/15/32/piano-1853301_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2016/11/29/09/16/architecture-1868667_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2017/08/07/16/36/people-2608145_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2016/11/29/04/19/beach-1867285_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2016/11/29/13/23/animal-1868911_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2016/11/29/10/41/architecture-1868668_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2015/04/23/22/00/tree-736885_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2016/05/05/02/37/sunset-1373171_960_720.jpg',
-  'https://cdn.pixabay.com/photo/2014/12/15/17/19/painting-576798_960_720.jpg'
-];
+const PAGE_SIZE = 20;
 
-const PICSUM_SEEDS = [
-  'artistry-a', 'artistry-b', 'artistry-c', 'artistry-d', 'artistry-e', 'artistry-f',
-  'artistry-g', 'artistry-h', 'artistry-i', 'artistry-j', 'artistry-k', 'artistry-l',
-  'artistry-m', 'artistry-n', 'artistry-o', 'artistry-p', 'artistry-q', 'artistry-r',
-  'artistry-s', 'artistry-t', 'artistry-u', 'artistry-v', 'artistry-w', 'artistry-x',
-  'artistry-y', 'artistry-z', 'artistry-aa', 'artistry-ab', 'artistry-ac', 'artistry-ad',
-  'artistry-ae', 'artistry-af', 'artistry-ag', 'artistry-ah', 'artistry-ai', 'artistry-aj',
-  'artistry-ak', 'artistry-al', 'artistry-am', 'artistry-an', 'artistry-ao', 'artistry-ap'
-].map((seed) => `https://picsum.photos/seed/${seed}/960/960`);
-
-const FEED_IMAGE_POOL = [...PIXABAY_JPG, ...PICSUM_SEEDS];
-
-const CREATORS = [
-  { artist: 'Elena Rodriguez', username: 'elenarod',     avatar: avatars.elenaRodriguez },
-  { artist: 'Marcus Chen',     username: 'marcusc',      avatar: avatars.marcusChen },
-  { artist: 'Sophia Laurent',  username: 'sophial',      avatar: avatars.sophiaLaurent },
-  { artist: 'Alex Kim',        username: 'alexkim',      avatar: avatars.alexKim },
-  { artist: 'Yuki Tanaka',     username: 'yukitanaka',   avatar: avatars.yukiTanaka },
-  { artist: 'Nina Patel',      username: 'ninapatel',    avatar: avatars.ninaPatel },
-  { artist: 'Carlos Santos',   username: 'carlossantos', avatar: avatars.carlosSantos },
-  { artist: 'Aria Johnson',    username: 'ariajohnson',  avatar: avatars.ariajohnson },
-  { artist: 'James Taylor',    username: 'jamestaylor',  avatar: avatars.jamesTaylor },
-];
-
-const TITLE_A = [
-  'Abstract',
-  'Urban',
-  'Digital',
-  'Morning',
-  'Silent',
-  'Neon',
-  'Coastal',
-  'Winter',
-  'Studio',
-  'Raw',
-  'Soft',
-  'Bold'
-];
-const TITLE_B = [
-  'Dreams',
-  'Layers',
-  'Study',
-  'Light',
-  'Motion',
-  'Echoes',
-  'Fragments',
-  'Rhythm',
-  'Horizon',
-  'Sketch',
-  'Canvas',
-  'Noise'
-];
-const DESCRIPTIONS = [
-  'Exploring color, texture, and form in a single frame.',
-  'A quiet moment captured between brushstrokes.',
-  'Experimenting with light and negative space.',
-  'Inspired by travel, memory, and sound.',
-  'Part of an ongoing series on movement and stillness.',
-  'Blending digital tools with traditional technique.',
-  'Sketchbook ideas brought to a finished piece.',
-  'Celebrating imperfection and happy accidents.',
-  'Built from layers of glaze and patience.',
-  'A tribute to the artists who came before.'
-];
-
-function pick(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function randomDuration() {
-  const m = Math.floor(Math.random() * 45) + 3;
-  const s = Math.floor(Math.random() * 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-function randomViews() {
-  const n = Math.random() * 50 + 1;
-  return n >= 10 ? `${n.toFixed(1)}K` : `${Math.round(n * 1000)}`;
+function normalize(a) {
+  const name = (a.artist_name || '').trim() || a.artist_username || 'Unknown';
+  return {
+    id:          a.id,
+    type:        a.content_type || 'photo',
+    title:       a.title        || 'Untitled',
+    description: a.description  || '',
+    artist:      name,
+    username:    a.artist_username || '',
+    avatar:      a.artist_avatar   || null,
+    image:       a.thumbnail       || null,   // thumbnail for feed card
+    thumbnail:   a.thumbnail       || null,
+    media_src:   a.media_src       || null,   // actual video/audio file URL
+    created_at:  a.created_at      || null,
+    likes:       Number(a.likes_count)    || 0,
+    comments:    Number(a.comments_count) || 0,
+  };
 }
 
 export class FeedPage extends Component {
   constructor() {
     super('app');
-    this.batchSize = 12;
-    this.nextId = 1;
-    this.feed = [];
-    this._loadingMore = false;
-    this._loadObserver = null;
-    this.appendRandomBatch(this.batchSize * 3);
 
-    window.addEventListener('newPostCreated', (e) => {
-      this.addNewPost(e.detail);
-    });
+    // 'all' or 'following'
+    this.activeTab   = 'all';
+    this.items       = [];
+    this.offset      = 0;
+    this.hasMore     = true;
+    this.loading     = false;
+    this._observer   = null;
+
+    window.addEventListener('newPostCreated', (e) => this._prependPost(e.detail));
   }
 
-  appendRandomBatch(count) {
-    for (let i = 0; i < count; i++) {
-      this.feed.push(this.createRandomPost(this.nextId++));
-    }
-  }
-
-  createRandomPost(id) {
-    const types = ['artwork', 'video', 'podcast', 'article'];
-    const type = pick(types);
-    const creator = pick(CREATORS);
-    const imageUrl = pick(FEED_IMAGE_POOL);
-    const title = `${pick(TITLE_A)} ${pick(TITLE_B)}`;
-    const description = pick(DESCRIPTIONS);
-    const likes = 40 + Math.floor(Math.random() * 960);
-
-    const base = {
-      id,
-      type,
-      artist:   creator.artist,
-      username: creator.username,
-      avatar:   creator.avatar,
-      likes,
-      title,
-      description
-    };
-
-    switch (type) {
-      case 'artwork':
-        return { ...base, image: imageUrl };
-      case 'video':
-        return {
-          ...base,
-          thumbnail: imageUrl,
-          views: randomViews(),
-          duration: randomDuration()
-        };
-      case 'podcast':
-        return {
-          ...base,
-          cover: imageUrl,
-          duration: `${15 + Math.floor(Math.random() * 45)} min`
-        };
-      case 'article':
-        return {
-          ...base,
-          thumbnail: imageUrl,
-          readTime: `${3 + Math.floor(Math.random() * 12)} min read`
-        };
-      default:
-        return { ...base, image: imageUrl };
-    }
-  }
-
-  addNewPost(post) {
-    console.log('FeedPage: Adding new post to feed:', post);
-    const id = post.id != null ? Number(post.id) : this.nextId++;
-    const normalized = { ...post, id };
-    this.feed.unshift(normalized);
-    if (id >= this.nextId) this.nextId = id + 1;
-    this.rerender();
-  }
-
-  rerender() {
-    const appContainer = document.getElementById('app');
-    if (appContainer) {
-      appContainer.innerHTML = '';
-      this.mount();
-    }
-  }
-
-  loadMoreFeed() {
-    if (this._loadingMore) return;
-    this._loadingMore = true;
-    const sentinel = document.getElementById('feed-load-sentinel');
-    if (this._loadObserver && sentinel) {
-      this._loadObserver.unobserve(sentinel);
-    }
-
-    const batch = [];
-    for (let i = 0; i < this.batchSize; i++) {
-      batch.push(this.createRandomPost(this.nextId++));
-    }
-    this.feed.push(...batch);
-    const grid = document.getElementById('feed-grid');
-    if (grid) {
-      batch.forEach((item) => grid.appendChild(this.createFeedCard(item)));
-      if (window.lucide) {
-        window.lucide.createIcons();
-      }
-    }
-
-    setTimeout(() => {
-      this._loadingMore = false;
-      if (this._loadObserver && sentinel && sentinel.parentNode) {
-        this._loadObserver.observe(sentinel);
-      }
-    }, 450);
-  }
+  // ── Render skeleton shell ──────────────────────────────────────────────────
 
   render() {
-    const container = this.createElement('div', {
-      className:
-        'min-h-screen pb-16 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-20'
+    const wrap = this.createElement('div', {
+      className: 'min-h-screen pb-16 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-20'
     });
 
-    const contentContainer = this.createElement('div', {
-      className: 'max-w-7xl mx-auto px-3 md:px-6'
-    });
+    const inner = this.createElement('div', { className: 'max-w-7xl mx-auto px-3 md:px-6' });
 
-    const header = this.createElement('div', {
-      className: 'mb-2 md:mb-4'
-    });
-
-    const title = this.createElement('h1', {
+    // Header
+    const header = this.createElement('div', { className: 'mb-4' });
+    header.appendChild(this.createElement('h1', {
       className: 'text-2xl md:text-3xl font-bold leading-tight'
-    }, 'Explore Top Visual Artists & Portfolios');
+    }, 'Discover Art & Creators'));
+    header.appendChild(this.createElement('p', {
+      className: 'text-slate-400 text-xs md:text-sm mt-0.5 leading-snug'
+    }, 'Browse portfolios, photos, videos and articles from the community.'));
 
-    const subtitle = this.createElement('p', {
-      className: 'text-slate-400 text-xs md:text-sm mt-0.5 md:mt-1 leading-snug max-md:line-clamp-2'
-    }, 'Discover digital art, 3D, and illustration portfolios — scroll for more.');
+    // Filter tabs
+    const tabs = this.createElement('div', {
+      id: 'feed-tabs',
+      className: 'flex gap-2 mb-4'
+    });
+    this._buildTab(tabs, 'all',       'All Works');
+    this._buildTab(tabs, 'following', 'Following');
 
-    header.appendChild(title);
-    header.appendChild(subtitle);
-
+    // Grid
     const grid = this.createElement('div', {
-      className: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4',
-      id: 'feed-grid'
+      id:        'feed-grid',
+      className: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4'
     });
+    this._appendSkeletons(grid, 8);
 
-    this.feed.forEach((item) => {
-      grid.appendChild(this.createFeedCard(item));
-    });
-
+    // Infinite scroll sentinel
     const sentinel = this.createElement('div', {
-      id: 'feed-load-sentinel',
-      className: 'flex justify-center py-8 min-h-[4rem]',
-      'aria-hidden': 'true'
+      id:        'feed-sentinel',
+      className: 'flex justify-center py-8'
     });
-    const hint = this.createElement('span', {
-      className: 'text-xs text-slate-500'
-    }, 'Loading more…');
-    sentinel.appendChild(hint);
+    sentinel.appendChild(this.createElement('span', {
+      id: 'feed-sentinel-label', className: 'text-xs text-slate-500'
+    }, ''));
 
-    contentContainer.appendChild(header);
-    contentContainer.appendChild(grid);
-    contentContainer.appendChild(sentinel);
-    container.appendChild(contentContainer);
-
-    return container;
+    inner.appendChild(header);
+    inner.appendChild(tabs);
+    inner.appendChild(grid);
+    inner.appendChild(sentinel);
+    wrap.appendChild(inner);
+    return wrap;
   }
+
+  _buildTab(container, value, label) {
+    const active = value === this.activeTab;
+    const btn = this.createElement('button', {
+      'data-tab': value,
+      className: `px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+        active ? 'bg-primary text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+      }`
+    }, label);
+    btn.addEventListener('click', () => this._switchTab(value));
+    container.appendChild(btn);
+  }
+
+  _appendSkeletons(grid, n) {
+    for (let i = 0; i < n; i++) {
+      grid.appendChild(this.createElement('div', {
+        className: 'aspect-square bg-slate-800 rounded-xl animate-pulse'
+      }));
+    }
+  }
+
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   afterRender() {
-    if (this._loadObserver) {
-      this._loadObserver.disconnect();
-      this._loadObserver = null;
-    }
-    const sentinel = document.getElementById('feed-load-sentinel');
-    if (!sentinel) {
-      super.afterRender();
-      return;
-    }
-
-    this._loadObserver = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          this.loadMoreFeed();
-        }
-      },
-      { root: null, rootMargin: '280px', threshold: 0 }
-    );
-    this._loadObserver.observe(sentinel);
     super.afterRender();
+    this._setupObserver();
+    this._loadPage(true);   // replace=true clears the skeleton placeholders
   }
 
-  createFeedCard(item) {
-    const state = stateManager.getState();
-    const isLiked = state.likes[item.id] || false;
-    const likes = isLiked ? item.likes + 1 : item.likes;
+  // ── Data loading ───────────────────────────────────────────────────────────
 
-    const card = this.createElement('div', {
-      className: 'group cursor-pointer'
+  async _loadPage(replace = false) {
+    if (this.loading) return;
+    this.loading = true;
+    this._setsentinel('Loading…');
+
+    try {
+      const params = { limit: PAGE_SIZE, offset: this.offset };
+      let res;
+
+      if (this.activeTab === 'following' && stateManager.getToken()) {
+        res = await api.feed.list(params);
+      } else {
+        res = await api.artworks.list(params);
+      }
+
+      const raw   = res?.data?.items ?? [];
+      const items = raw.map(normalize);
+
+      if (replace) {
+        this.items = items;
+        this._clearGrid();
+      } else {
+        this.items.push(...items);
+      }
+
+      this.hasMore = items.length === PAGE_SIZE;
+      this.offset  = replace ? items.length : this.offset + items.length;
+
+      this._renderItems(items, replace);
+      this._setsentinel(this.hasMore ? '' : 'You\'ve seen everything ✓');
+    } catch (err) {
+      this._setsentinel('Could not load posts.');
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  _clearGrid() {
+    const grid = document.getElementById('feed-grid');
+    if (grid) grid.innerHTML = '';
+  }
+
+  _renderItems(items, replace = false) {
+    const grid = document.getElementById('feed-grid');
+    if (!grid) return;
+
+    if (replace) {
+      grid.innerHTML = '';
+      if (items.length === 0) {
+        const empty = this.createElement('div', {
+          className: 'col-span-full flex flex-col items-center justify-center py-20 text-slate-400'
+        });
+        const msg = this.activeTab === 'following'
+          ? 'Follow some artists to see their work here'
+          : 'No artworks yet — be the first to post!';
+        empty.appendChild(this.createIcon('image', 'w-16 h-16 mb-4 opacity-30'));
+        empty.appendChild(this.createElement('p', { className: 'text-lg font-medium' }, msg));
+        if (this.activeTab === 'following') {
+          const btn = this.createElement('button', {
+            className: 'mt-4 px-5 py-2 bg-primary rounded-full text-sm font-medium'
+          }, 'Browse all works');
+          btn.addEventListener('click', () => this._switchTab('all'));
+          empty.appendChild(btn);
+        }
+        grid.appendChild(empty);
+        return;
+      }
+    }
+
+    items.forEach(item => grid.appendChild(this._createCard(item)));
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  // ── Tab switching ──────────────────────────────────────────────────────────
+
+  _switchTab(value) {
+    if (value === this.activeTab) return;
+    if (value === 'following' && !stateManager.getToken()) {
+      toast.show('Sign in to see your following feed', 'error');
+      return;
+    }
+    this.activeTab = value;
+    this.offset    = 0;
+    this.hasMore   = true;
+
+    // Update pill styles
+    document.querySelectorAll('[data-tab]').forEach(btn => {
+      const active = btn.dataset.tab === value;
+      btn.className = `px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+        active ? 'bg-primary text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+      }`;
     });
 
-    const cardInner = this.createElement('div', {
-      className: 'bg-slate-800 rounded-xl overflow-hidden hover:transform hover:scale-[1.02] transition-all duration-300 h-full flex flex-col'
+    // Reset grid with skeletons then load
+    const grid = document.getElementById('feed-grid');
+    if (grid) { grid.innerHTML = ''; this._appendSkeletons(grid, 8); }
+
+    this._loadPage(true);
+  }
+
+  // ── Infinite scroll ────────────────────────────────────────────────────────
+
+  _setupObserver() {
+    if (this._observer) { this._observer.disconnect(); this._observer = null; }
+    const sentinel = document.getElementById('feed-sentinel');
+    if (!sentinel) return;
+    this._observer = new IntersectionObserver(entries => {
+      if (entries[0]?.isIntersecting && this.hasMore && !this.loading) {
+        this._loadPage();
+      }
+    }, { rootMargin: '300px' });
+    this._observer.observe(sentinel);
+  }
+
+  _setsentinel(text) {
+    const el = document.getElementById('feed-sentinel-label');
+    if (el) el.textContent = text;
+  }
+
+  // ── New post prepend ───────────────────────────────────────────────────────
+
+  _prependPost(post) {
+    const item = normalize({
+      id:              post.id,
+      content_type:    post.type  || 'photo',
+      title:           post.title || 'New post',
+      description:     post.description || '',
+      artist_name:     post.artist || '',
+      artist_username: post.username || '',
+      artist_avatar:   post.avatar || null,
+      thumbnail:       post.image  || post.thumbnail || null,
+      media_src:       post.media_src || null,
+      likes_count:     0,
+      comments_count:  0,
+    });
+    this.items.unshift(item);
+    this.offset++;
+
+    const grid = document.getElementById('feed-grid');
+    if (grid) {
+      const card = this._createCard(item);
+      grid.insertBefore(card, grid.firstChild);
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+
+  // ── Card ───────────────────────────────────────────────────────────────────
+
+  _createCard(item) {
+    const state   = stateManager.getState();
+    const isLiked = !!(state.likes?.[item.id]);
+    const likes   = isLiked ? item.likes + 1 : item.likes;
+
+    const card = this.createElement('div', { className: 'group cursor-pointer' });
+    const inner = this.createElement('div', {
+      className: 'bg-slate-800 rounded-xl overflow-hidden hover:scale-[1.02] transition-all duration-300 h-full flex flex-col'
     });
 
-    const imageContainer = this.createElement('div', {
+    // Image
+    const imgWrap = this.createElement('div', {
       className: 'relative aspect-square overflow-hidden bg-slate-700'
     });
-    imageContainer.addEventListener('click', () => this.openContent(item));
+    imgWrap.addEventListener('click', () => this._openContent(item));
 
-    const imageUrl = item.image || item.thumbnail || item.cover;
-    const typeLabel = item.type === 'artwork' ? 'artwork' : item.type;
-    const image = this.createElement('img', {
-      src: imageUrl,
-      alt: `${item.title} — ${typeLabel} by ${item.artist} on Artistry`,
-      className: 'w-full h-full object-cover'
-    });
-
-    image.addEventListener('error', (e) => {
-      console.warn('Image failed to load:', imageUrl);
-      e.target.src =
-        'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="500" height="500"%3E%3Crect fill="%231e293b" width="500" height="500"/%3E%3Ctext fill="%2364748b" font-family="sans-serif" font-size="24" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3E' +
-        encodeURIComponent(item.type || 'Image') +
-        '%3C/text%3E%3C/svg%3E';
-    });
-
-    imageContainer.appendChild(image);
-
-    if (item.type !== 'artwork') {
-      const badge = this.createTypeBadge(item);
-      imageContainer.appendChild(badge);
+    if (item.image) {
+      const img = this.createElement('img', {
+        src:       item.image,
+        alt:       `${item.title} by ${item.artist}`,
+        className: 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-500'
+      });
+      img.addEventListener('error', () => {
+        img.style.display = 'none';
+        imgWrap.classList.add('flex', 'items-center', 'justify-center');
+        imgWrap.appendChild(this.createElement('span', { className: 'text-slate-500 text-sm' }, item.title));
+      });
+      imgWrap.appendChild(img);
+    } else {
+      imgWrap.classList.add('flex', 'items-center', 'justify-center');
+      imgWrap.appendChild(this.createElement('span', { className: 'text-slate-500 text-sm' }, item.type));
     }
 
-    if (item.duration || item.readTime || item.views) {
-      const overlay = this.createElement(
-        'div',
-        {
-          className: 'absolute bottom-2 right-2 px-2 py-1 bg-black/80 rounded text-xs font-medium'
-        },
-        item.duration || item.readTime || ''
-      );
-      imageContainer.appendChild(overlay);
+    // Type badge for non-photo content
+    if (item.type !== 'photo') {
+      const badge = this._typeBadge(item.type);
+      imgWrap.appendChild(badge);
     }
 
-    const infoContainer = this.createElement('div', {
+    // Bottom bar
+    const bar = this.createElement('div', {
       className: 'p-3 flex items-center justify-between bg-slate-800'
     });
 
-    const artistInfo = this.createElement('div', {
-      className: 'flex items-center gap-2 min-w-0 flex-1'
+    // Artist
+    const artistWrap = this.createElement('div', {
+      className: 'flex items-center gap-2 min-w-0 flex-1 cursor-pointer'
     });
+    artistWrap.addEventListener('click', (e) => { e.stopPropagation(); this._openProfile(item); });
 
-    const avatarContainer = this.createElement('div', {
-      className: 'w-8 h-8 rounded-full overflow-hidden bg-slate-700 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary transition-all'
+    const avatarEl = this.createElement('div', {
+      className: 'w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-slate-700 flex items-center justify-center hover:ring-2 hover:ring-primary transition-all'
     });
+    if (item.avatar) {
+      const av = this.createElement('img', { src: item.avatar, alt: item.artist, className: 'w-full h-full object-cover' });
+      av.addEventListener('error', () => {
+        av.remove();
+        avatarEl.textContent = (item.artist || '?').charAt(0).toUpperCase();
+        avatarEl.classList.add('text-xs', 'font-bold', 'text-slate-300');
+      });
+      avatarEl.appendChild(av);
+    } else {
+      avatarEl.textContent = (item.artist || '?').charAt(0).toUpperCase();
+      avatarEl.classList.add('text-xs', 'font-bold', 'text-slate-300');
+    }
 
-    avatarContainer.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.openUserProfile(item);
-    });
-
-    const avatar = this.createElement('img', {
-      src: item.avatar,
-      alt: `Profile photo of ${item.artist}, artist on Artistry`,
-      className: 'w-full h-full object-cover'
-    });
-
-    const artistName = this.createElement('span', {
-      className: 'text-xs truncate cursor-pointer hover:text-primary transition-colors'
+    const nameEl = this.createElement('span', {
+      className: 'text-xs truncate hover:text-primary transition-colors'
     }, item.artist);
 
-    artistName.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.openUserProfile(item);
-    });
+    artistWrap.appendChild(avatarEl);
+    artistWrap.appendChild(nameEl);
 
-    avatarContainer.appendChild(avatar);
-    artistInfo.appendChild(avatarContainer);
-    artistInfo.appendChild(artistName);
-
-    const likeButton = this.createElement('button', {
-      className: `flex items-center gap-1 text-slate-400 hover:text-red-500 transition-colors group/like flex-shrink-0 ${isLiked ? 'text-red-500' : ''}`,
+    // Like button — count is always read from the DOM on click to stay accurate
+    const likeBtn = this.createElement('button', {
+      className: `flex items-center gap-1 transition-colors flex-shrink-0 ${isLiked ? 'text-red-500' : 'text-slate-400 hover:text-red-500'}`,
       id: `like-btn-${item.id}`
     });
-    likeButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.handleLike(item.id, likes, likeButton);
-    });
+    likeBtn.addEventListener('click', (e) => { e.stopPropagation(); this._handleLike(item.id, likeBtn); });
 
-    const heartIcon = this.createIcon('heart', `w-4 h-4 group-hover/like:fill-current ${isLiked ? 'fill-current' : ''}`);
-    const likeCount = this.createElement('span', {
-      className: 'text-xs',
-      id: `likes-${item.id}`
-    }, likes.toString());
+    const heartIcon = this.createIcon('heart', `w-4 h-4 ${isLiked ? 'fill-current' : ''}`);
+    const likeCount = this.createElement('span', { className: 'text-xs', id: `likes-${item.id}` }, likes.toString());
+    likeBtn.appendChild(heartIcon);
+    likeBtn.appendChild(likeCount);
 
-    likeButton.appendChild(heartIcon);
-    likeButton.appendChild(likeCount);
-
-    infoContainer.appendChild(artistInfo);
-    infoContainer.appendChild(likeButton);
-
-    cardInner.appendChild(imageContainer);
-    cardInner.appendChild(infoContainer);
-    card.appendChild(cardInner);
+    bar.appendChild(artistWrap);
+    bar.appendChild(likeBtn);
+    inner.appendChild(imgWrap);
+    inner.appendChild(bar);
+    card.appendChild(inner);
 
     return card;
   }
 
-  createTypeBadge(item) {
-    let icon;
-    let label;
-    let color;
-
-    switch (item.type) {
-      case 'video':
-        icon = 'play-circle';
-        label = 'VIDEO';
-        color = 'bg-red-600';
-        break;
-      case 'podcast':
-        icon = 'mic';
-        label = 'PODCAST';
-        color = 'bg-purple-600';
-        break;
-      case 'article':
-        icon = 'file-text';
-        label = 'ARTICLE';
-        color = 'bg-green-600';
-        break;
-      default:
-        return this.createElement('div');
-    }
-
+  _typeBadge(type) {
+    const map = {
+      video:   { icon: 'play-circle', label: 'VIDEO',   color: 'bg-red-600' },
+      podcast: { icon: 'mic',         label: 'PODCAST', color: 'bg-purple-600' },
+      article: { icon: 'file-text',   label: 'ARTICLE', color: 'bg-green-600' },
+    };
+    const cfg = map[type] || { icon: 'image', label: type.toUpperCase(), color: 'bg-slate-600' };
     const badge = this.createElement('div', {
-      className: `absolute top-2 left-2 flex items-center gap-1 px-2 py-1 ${color} rounded-full text-xs font-bold`
+      className: `absolute top-2 left-2 flex items-center gap-1 px-2 py-1 ${cfg.color} rounded-full text-xs font-bold`
     });
-
-    const badgeIcon = this.createIcon(icon, 'w-3 h-3');
-    const badgeText = document.createTextNode(label);
-
-    badge.appendChild(badgeIcon);
-    badge.appendChild(badgeText);
-
+    badge.appendChild(this.createIcon(cfg.icon, 'w-3 h-3'));
+    badge.appendChild(document.createTextNode(cfg.label));
     return badge;
   }
 
-  openContent(item) {
-    console.log('FeedPage: openContent called for:', item.title, 'type:', item.type);
-    if (item.type === 'artwork') {
-      console.log('FeedPage: Opening lightbox for artwork');
-      this.openLightbox(item);
-    } else {
-      console.log('FeedPage: Opening content viewer for', item.type);
-      const event = new CustomEvent('openContentViewer', {
-        detail: { type: item.type, data: item }
-      });
-      window.dispatchEvent(event);
-    }
-  }
+  // ── Actions ────────────────────────────────────────────────────────────────
 
-  handleLike(itemId, currentLikes, buttonElement) {
-    // Optimistic local toggle
-    const result = stateManager.toggleLike(itemId, currentLikes);
-
-    const likeEl = document.getElementById(`likes-${itemId}`);
-    if (likeEl) likeEl.textContent = result.newLikes.toString();
-
-    if (buttonElement) {
-      buttonElement.classList.toggle('text-red-500', result.isLiked);
-      buttonElement.classList.toggle('text-slate-400', !result.isLiked);
-    }
-
-    if (window.lucide) window.lucide.createIcons();
-
-    // Best-effort sync to backend (only for posts with a real DB id)
-    if (stateManager.getToken() && typeof itemId === 'number' && itemId < 2_000_000_000) {
-      api.likes.toggle('artwork', itemId).catch(() => { /* non-fatal */ });
-    }
-  }
-
-  openLightbox(artwork) {
-    console.log('FeedPage: openLightbox called for:', artwork.title);
-    stateManager.updateNested('modalState.selectedArtwork', artwork);
+  _openContent(item) {
+    // All content types go through the lightbox (which now supports video/audio/article)
+    stateManager.updateNested('modalState.selectedArtwork', item);
     stateManager.updateNested('modalState.artworkLightbox', true);
-
-    console.log('FeedPage: Dispatching openLightbox event');
-    const event = new CustomEvent('openLightbox', { detail: artwork });
-    window.dispatchEvent(event);
-    console.log('FeedPage: Event dispatched');
+    window.dispatchEvent(new CustomEvent('openLightbox', { detail: item }));
   }
 
-  openUserProfile(item) {
-    const username = item.username || item.artist_username || item.artist?.toLowerCase().replace(/\s+/g, '');
-    if (username) router.navigate(`/user/${username}`);
+  _openProfile(item) {
+    if (item.username) router.navigate(`/user/${item.username}`);
+  }
+
+  _handleLike(id, btn) {
+    const countEl = document.getElementById(`likes-${id}`);
+    // Always read the displayed count so repeated clicks stay accurate
+    const currentCount = parseInt(countEl?.textContent ?? '0', 10);
+    const result = stateManager.toggleLike(id, currentCount);
+
+    if (countEl) countEl.textContent = result.newLikes.toString();
+    if (btn) {
+      btn.className = `flex items-center gap-1 transition-colors flex-shrink-0 ${result.isLiked ? 'text-red-500' : 'text-slate-400 hover:text-red-500'}`;
+      // Flip the heart fill without re-creating the whole icon
+      const svg = btn.querySelector('svg');
+      if (svg) svg.classList.toggle('fill-current', result.isLiked);
+    }
+
+    if (stateManager.getToken()) {
+      api.likes.toggle('artwork', id).then(res => {
+        // Reconcile with the authoritative server count
+        const serverCount = res?.data?.like_count;
+        if (serverCount !== undefined && countEl) {
+          countEl.textContent = serverCount.toString();
+        }
+      }).catch(() => {});
+    }
   }
 }

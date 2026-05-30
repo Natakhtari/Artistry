@@ -1,6 +1,8 @@
 import { stateManager } from './state.js';
 
-export const API_BASE = 'http://localhost:8742/api';
+/** Set `window.ARTISTRY_API_BASE` in index.html before the app module loads (e.g. `https://api.yoursite.com/api`). */
+export const API_BASE =
+  (typeof window !== 'undefined' && window.ARTISTRY_API_BASE) || 'http://localhost:8742/api';
 
 /** Try to get a new access token using the stored refresh token. */
 async function tryRefresh() {
@@ -138,6 +140,10 @@ async function uploadFile(file, _retried = false) {
 export const api = {
   upload: uploadFile,
 
+  feed: {
+    list: (p = {}) => request('GET', `/feed?${new URLSearchParams(p)}`, null, true),
+  },
+
   auth: {
     register: (body) => request('POST', '/auth/register', body, false),
     login:    (body) => request('POST', '/auth/login',    body, false),
@@ -159,6 +165,7 @@ export const api = {
   },
 
   users: {
+    list:            (p = {})   => request('GET',  `/users?${new URLSearchParams(p)}`, null, false),
     show:            (id)       => request('GET',  `/users/${id}`,                    null, false),
     showByUsername:  (username) => request('GET',  `/users/by-username/${encodeURIComponent(username)}`, null, false),
     stats:           (id)       => request('GET',  `/users/${id}/stats`,              null, false),
@@ -195,5 +202,13 @@ export const api = {
   news: {
     list:       (p = {}) => request('GET', `/news?${new URLSearchParams(p)}`,    null, false),
     categories: ()       => request('GET', '/news/categories',                   null, false),
+  },
+
+  messages: {
+    conversations: ()               => request('GET',  '/messages/conversations',              null, true),
+    thread:        (userId, p={})   => request('GET',  `/messages/${userId}?${new URLSearchParams(p)}`, null, true),
+    send:          (userId, body)   => request('POST', `/messages/${userId}`,                  body, true),
+    poll:          (userId, afterId)=> request('GET',  `/messages/${userId}/poll?after=${afterId}`, null, true),
+    react:         (messageId)      => request('POST', `/messages/react/${messageId}`,         null, true),
   },
 };

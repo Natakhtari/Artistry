@@ -122,7 +122,7 @@ export class UserProfilePage extends Component {
     headerArea.innerHTML = '';
 
     const displayName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username;
-    const avatar      = user.profile_picture_url || `https://i.pravatar.cc/150?u=artistry_${user.id}`;
+    const avatar      = user.profile_picture_url || null;
 
     const header = this.createElement('div', {
       className: 'bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 mb-6 border border-slate-700'
@@ -188,22 +188,49 @@ export class UserProfilePage extends Component {
     // Buttons
     const buttons = this.createElement('div', { className: 'flex gap-3 justify-center md:justify-start flex-wrap' });
 
-    const followBtn = this.createElement('button', {
-      className: 'flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover rounded-xl transition-all hover:scale-105 font-medium'
-    });
-    followBtn.appendChild(this.createIcon('user-plus', 'w-4 h-4'));
-    followBtn.appendChild(document.createTextNode('Follow'));
-    followBtn.addEventListener('click', () => {
-      api.users.follow(user.id)
-        .then(res => {
-          const isNow = res.data?.following;
-          followBtn.innerHTML = '';
-          followBtn.appendChild(this.createIcon(isNow ? 'user-check' : 'user-plus', 'w-4 h-4'));
-          followBtn.appendChild(document.createTextNode(isNow ? 'Following' : 'Follow'));
-          if (window.lucide) window.lucide.createIcons();
-        })
-        .catch(() => {});
-    });
+    const state       = stateManager.getState();
+    const currentUser = state.user ?? state.currentUser;
+    const isOwnProfile = currentUser && (currentUser.id === user.id || currentUser.username === user.username);
+
+    if (!isOwnProfile) {
+      const followBtn = this.createElement('button', {
+        id:        'uprofile-follow-btn',
+        className: 'flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover rounded-xl transition-all hover:scale-105 font-medium'
+      });
+
+      // Check if already following
+      let isFollowing = false;
+      if (currentUser) {
+        api.users.stats(currentUser.id).then(res => {
+          // We can't easily check follow status without a dedicated endpoint,
+          // so we just start with Follow state — the toggle response tells us the new state
+        }).catch(() => {});
+      }
+
+      const setFollowState = (following) => {
+        isFollowing = following;
+        followBtn.innerHTML = '';
+        followBtn.appendChild(this.createIcon(following ? 'user-check' : 'user-plus', 'w-4 h-4'));
+        followBtn.appendChild(document.createTextNode(following ? 'Following' : 'Follow'));
+        followBtn.className = `flex items-center gap-2 px-6 py-3 rounded-xl transition-all hover:scale-105 font-medium ${
+          following
+            ? 'bg-slate-700 hover:bg-slate-600'
+            : 'bg-primary hover:bg-primary-hover'
+        }`;
+        if (window.lucide) window.lucide.createIcons();
+      };
+
+      setFollowState(false);
+
+      followBtn.addEventListener('click', () => {
+        if (!stateManager.getToken()) { router.navigate('/auth'); return; }
+        api.users.follow(user.id)
+          .then(res => setFollowState(res.data?.following ?? !isFollowing))
+          .catch(() => {});
+      });
+
+      buttons.appendChild(followBtn);
+    }
 
     const msgBtn = this.createElement('button', {
       className: 'flex items-center gap-2 px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl transition-all hover:scale-105 font-medium'
@@ -212,7 +239,6 @@ export class UserProfilePage extends Component {
     msgBtn.appendChild(document.createTextNode('Message'));
     msgBtn.addEventListener('click', () => router.navigate('/messages'));
 
-    buttons.appendChild(followBtn);
     buttons.appendChild(msgBtn);
 
     info.appendChild(nameRow);
@@ -294,7 +320,9 @@ export class UserProfilePage extends Component {
           title:       artwork.title,
           description: artwork.description || '',
           artist:      displayName,
+          username:    this.user?.username || this.username,
           avatar,
+          created_at:  artwork.created_at,
           likes:       artwork.likes_count    || 0,
           comments:    artwork.comments_count || 0,
           isLiked:     false

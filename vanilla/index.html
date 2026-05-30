@@ -98,6 +98,10 @@
   
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Cropper.js — image editor for uploads -->
+  <link rel="stylesheet" href="https://unpkg.com/cropperjs/dist/cropper.min.css">
+  <script src="https://unpkg.com/cropperjs/dist/cropper.min.js"></script>
   
   <!-- Debug Script -->
   <script>
@@ -122,6 +126,8 @@
   <!-- Optional: production domain + share image for SEO (before app.js)
   <script>window.__ARTISTRY_SITE_ORIGIN__='https://www.yourdomain.com';window.__ARTISTRY_OG_IMAGE__='https://www.yourdomain.com/og-image.jpg';</script>
   -->
+  <!-- Production: REST API base URL (must end with /api). Uncomment and set your API host. -->
+  <!-- <script>window.ARTISTRY_API_BASE = 'https://your-api.onrender.com/api';</script> -->
   <!-- Main App Script (ES6 Module) -->
   <script type="module" src="js/app.js"></script>
 </body>

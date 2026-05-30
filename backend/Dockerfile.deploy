@@ -1,0 +1,25 @@
+# Production image — copies the API into the image (no bind mount).
+# Build from repo root:  docker build -f backend/Dockerfile.deploy -t artistry-api backend
+# Or set Render/Fly "Dockerfile path" to backend/Dockerfile.deploy and root directory to backend.
+
+FROM php:8.3-apache
+
+RUN apt-get update && apt-get install -y \
+        libpq-dev \
+    && docker-php-ext-install pdo pdo_pgsql \
+    && rm -rf /var/lib/apt/lists/* \
+    && a2enmod rewrite
+
+RUN echo "upload_max_filesize = 50M\npost_max_size = 55M\nmemory_limit = 128M" \
+    > /usr/local/etc/php/conf.d/uploads.ini
+
+COPY apache.conf /etc/apache2/sites-available/000-default.conf
+
+COPY api/ /var/www/html/
+
+RUN mkdir -p /var/www/html/public/uploads \
+    && chown -R www-data:www-data /var/www/html/public/uploads
+
+WORKDIR /var/www/html
+
+EXPOSE 80

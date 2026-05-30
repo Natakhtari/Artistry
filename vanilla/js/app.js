@@ -25,89 +25,47 @@ class App {
     this.init();
   }
 
-  init() {
-    console.log('Init called');
-
-    // If we have a stored token, silently refresh the user profile in the background
-    if (stateManager.getToken()) {
-      api.auth.me().then(res => {
-        stateManager.setUser(res.data);
-      }).catch(() => {
-        stateManager.clearAuth();
-      });
-    }
+  async init() {
     // Register all routes
-    router.register('/', () => {
-      console.log('Route handler: Landing page');
-      this.renderPage(LandingPage);
-    });
-    router.register('/auth', () => {
-      console.log('Route handler: Auth page');
-      this.renderPage(AuthPage, true);
-    }); // No nav
-    router.register('/feed', () => {
-      console.log('Route handler: Feed page');
-      this.checkAuth(() => this.renderPage(FeedPage));
-    });
-    router.register('/profile', () => {
-      console.log('Route handler: Profile page');
-      this.checkAuth(() => this.renderPage(ProfilePage));
-    });
-    
-    // Dynamic route for user profiles
+    router.register('/', () => this.renderPage(LandingPage));
+    router.register('/auth', () => this.renderPage(AuthPage, true));
+    router.register('/feed', () => this.checkAuth(() => this.renderPage(FeedPage)));
+    router.register('/profile', () => this.checkAuth(() => this.renderPage(ProfilePage)));
+
+    // Public — no auth required; the page itself handles the logged-in/out difference
     router.register('/user/:username', (params) => {
-      console.log('User profile route called with params:', params);
-      this.checkAuth(() => this.renderPage(UserProfilePage, false, params.username));
-    });
-    
-    router.register('/messages', () => {
-      console.log('Route handler: Messages page');
-      this.checkAuth(() => this.renderPage(MessagesPage));
-    });
-    router.register('/messages/:chatId', (params) => {
-      console.log('Route handler: Messages chat page', params);
-      this.checkAuth(() => this.renderPage(MessagesPage, false, params.chatId));
-    });
-    router.register('/notifications', () => {
-      console.log('Route handler: Notifications page');
-      this.checkAuth(() => this.renderPage(NotificationsPage));
-    });
-    router.register('/settings', () => {
-      console.log('Route handler: Settings page');
-      this.checkAuth(() => this.renderPage(SettingsPage));
-    });
-    router.register('/news', () => {
-      console.log('Route handler: News page');
-      this.renderPage(NewsPage);
+      this.renderPage(UserProfilePage, false, params.username);
     });
 
-    console.log('Routes registered:', Object.keys(router.routes));
+    router.register('/messages',          ()       => this.checkAuth(() => this.renderPage(MessagesPage)));
+    router.register('/messages/:chatId',  (params) => this.checkAuth(() => this.renderPage(MessagesPage, false, params.chatId)));
+    router.register('/notifications',     ()       => this.checkAuth(() => this.renderPage(NotificationsPage)));
+    router.register('/settings',          ()       => this.checkAuth(() => this.renderPage(SettingsPage)));
+    router.register('/news',              ()       => this.renderPage(NewsPage));
 
     // Subscribe to state changes
-    stateManager.subscribe((state) => {
-      this.handleStateChange(state);
-    });
+    stateManager.subscribe((state) => this.handleStateChange(state));
 
-    // Listen for lightbox open events
-    window.addEventListener('openLightbox', (e) => {
-      this.openLightbox(e.detail);
-    });
+    // Listen for modal open events
+    window.addEventListener('openLightbox',      (e) => this.openLightbox(e.detail));
+    window.addEventListener('openContentViewer', (e) => this.openContentViewer(e.detail));
 
-    // Listen for content viewer events
-    window.addEventListener('openContentViewer', (e) => {
-      this.openContentViewer(e.detail);
-    });
+    // Silently restore auth before the first render so checkAuth works correctly
+    // on a hard refresh even when only the refresh token remains.
+    if (stateManager.getToken()) {
+      try {
+        const res = await api.auth.me();
+        stateManager.setUser(res.data);
+      } catch {
+        stateManager.clearAuth();
+      }
+    }
 
-    // Initial render - default to home page
+    // Navigate to the current URL path
     const path = window.location.pathname;
-    console.log('Initial path:', path);
-    
-    // If path is /vanilla or includes /vanilla, redirect to root
     if (path.includes('/vanilla')) {
-      console.log('Redirecting to /');
       router.navigate('/', true);
     } else {
-      console.log('Navigating to:', path);
       router.navigate(path, false);
     }
   }
@@ -127,6 +85,11 @@ class App {
   renderPage(PageClass, hideNav = false, ...args) {
     console.log('renderPage called with:', PageClass.name, 'hideNav:', hideNav, 'args:', args);
     try {
+      // Teardown previous page
+      if (this.currentPage && typeof this.currentPage.destroy === 'function') {
+        this.currentPage.destroy();
+      }
+
       // Clear app container
       const appContainer = document.getElementById('app');
       console.log('App container:', appContainer);

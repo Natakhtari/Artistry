@@ -4,6 +4,29 @@ declare(strict_types=1);
 
 class UserController
 {
+    /** GET /users  — public; list of creators with follower counts */
+    public function index(array $params): void
+    {
+        $limit  = max(1, min(50, (int) ($_GET['limit']  ?? 20)));
+        $offset = max(0,          (int) ($_GET['offset'] ?? 0));
+
+        $db   = Database::getInstance();
+        $stmt = $db->prepare(
+            'SELECT u.id, u.username,
+                    TRIM(COALESCE(u.first_name,\'\') || \' \' || COALESCE(u.last_name,\'\')) AS display_name,
+                    p.bio, p.profile_picture_url,
+                    (SELECT COUNT(*) FROM follows WHERE following_id = u.id) AS followers_count,
+                    (SELECT COUNT(*) FROM artworks a WHERE a.user_id = u.id AND a.status = \'published\') AS artworks_count
+             FROM users u
+             LEFT JOIN profiles p ON u.id = p.user_id
+             WHERE u.is_active = TRUE
+             ORDER BY followers_count DESC, artworks_count DESC
+             LIMIT :lim OFFSET :off'
+        );
+        $stmt->execute(['lim' => $limit, 'off' => $offset]);
+        Response::ok(['items' => $stmt->fetchAll()]);
+    }
+
     public function show(array $params): void
     {
         $db   = Database::getInstance();

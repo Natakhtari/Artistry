@@ -291,3 +291,80 @@ a {
   }
 }
 
+/* ── Chat photo lightbox ──────────────────────────────────────────── */
+.chat-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(6px);
+  cursor: zoom-out;
+  animation: lb-in 0.18s ease;
+}
+@keyframes lb-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.chat-lightbox img {
+  max-width: min(92vw, 900px);
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+  cursor: default;
+  user-select: none;
+}
+.chat-lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255,255,255,0.12);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.15s;
+}
+.chat-lightbox-close:hover { background: rgba(255,255,255,0.25); }
+
+/* ── Message double-tap heart ─────────────────────────────────────── */
+@keyframes heart-burst {
+  0%   { opacity: 1; transform: scale(0.4) translateY(0); }
+  40%  { opacity: 1; transform: scale(1.5) translateY(-12px); }
+  100% { opacity: 0; transform: scale(1.2) translateY(-36px); }
+}
+.heart-burst {
+  position: absolute;
+  pointer-events: none;
+  font-size: 2rem;
+  animation: heart-burst 0.65s ease forwards;
+  z-index: 100;
+}
+
+/* ── Message like badge ───────────────────────────────────────────── */
+.msg-like-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 2px 7px 2px 5px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  user-select: none;
+  line-height: 1;
+}
+.msg-like-badge:hover  { background: rgba(255,255,255,0.2); }
+.msg-like-badge:active { transform: scale(0.92); }
+.msg-like-badge.liked  { background: rgba(239,68,68,0.25); }
+.msg-like-badge .heart { font-size: 13px; }
+
