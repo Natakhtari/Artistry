@@ -1,0 +1,5 @@
+# For Cloudflare Pages ONLY: copy this file to vanilla/_redirects (rename: drop .pages-example)
+# Do NOT use with Wrangler Workers + assets — Cloudflare rejects it (infinite loop with SPA routing).
+#
+# Rule line must be exactly one line like below (spaces between columns):
+/*    /index.html   200
