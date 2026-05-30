@@ -26,10 +26,19 @@ class Database
                 }
             }
 
+            // Neon pooler (PgBouncer) + PDO native prepares often causes "server closed the
+            // connection unexpectedly" / generic 500s. Emulated prepares are safe here.
+            $emulate = getenv('DB_EMULATE_PREPARES');
+            if ($emulate === false || $emulate === '') {
+                $emulatePrepares = ($host !== 'postgres' && $host !== '127.0.0.1');
+            } else {
+                $emulatePrepares = filter_var($emulate, FILTER_VALIDATE_BOOLEAN);
+            }
+
             self::$instance = new PDO($dsn, $user, $pass, [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES   => false,
+                PDO::ATTR_EMULATE_PREPARES   => $emulatePrepares,
             ]);
         }
 

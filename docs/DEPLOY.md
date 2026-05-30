@@ -176,6 +176,8 @@ GitHub Pages is `https://username.github.io/repo/` — add that exact origin to 
 | Cloudflare: `npm error ENOENT package.json` | Set **`SKIP_DEPENDENCY_INSTALL`** = **`1`** and build command **`exit 0`**; output dir **`vanilla`**. |
 | Cloudflare: `npm ci` / missing or invalid `package-lock.json` | Pull latest repo: root **`package.json`** + **`package-lock.json`** are a minimal no-deps project so `npm clean-install` succeeds. Or set **`SKIP_DEPENDENCY_INSTALL`**=`1` and redeploy. |
 | Browser: CORS error | `CORS_ORIGIN` mismatch (www vs non-www, http vs https) |
+| Register/login **500** (Neon pooler + Render) | Redeploy API with latest **`Database.php`**: emulated PDO prepares are enabled when `DB_HOST` is not `postgres`/`127.0.0.1`. Also set **`DB_SSLMODE=require`**, confirm **`init.sql`** ran on Neon. **Render → Logs** shows the real SQL error if it persists. |
+| API: DB connection failed | Wrong `DB_HOST` / SSL; Neon needs SSL on port 5432 |
 | 401 on everything | JWT or clock skew; clear `localStorage` and log in again |
 | Uploads disappear | Free Render disk is ephemeral — use object storage for production |
 
