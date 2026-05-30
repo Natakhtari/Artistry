@@ -29,10 +29,23 @@ class Router
     public function dispatch(): void
     {
         $method = $_SERVER['REQUEST_METHOD'];
-        $uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+        $rawUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 
-        // Strip leading /api prefix if present
-        $path = preg_replace('#^/api#', '', $uri) ?: '/';
+        // Strip leading /api prefix (public API URL is /api/...)
+        $stripped = preg_replace('#^/api#', '', $rawUri) ?: '/';
+        $stripped = rtrim($stripped, '/') ?: '/';
+        $rawNorm   = rtrim($rawUri, '/') ?: '/';
+
+        // Try stripped path first, then raw (covers proxies / health checks that preserve /api)
+        $pathInfo = isset($_SERVER['PATH_INFO']) ? (string) $_SERVER['PATH_INFO'] : '';
+        $pathInfo = $pathInfo !== '' ? (rtrim($pathInfo, '/') ?: '/') : '';
+
+        $candidates = [];
+        foreach ([$stripped, $rawNorm, $pathInfo] as $p) {
+            if ($p !== '' && !in_array($p, $candidates, true)) {
+                $candidates[] = $p;
+            }
+        }
 
         // Browser preflight — already handled in index.php but guard here too
         if ($method === 'OPTIONS') {
@@ -40,26 +53,27 @@ class Router
             exit;
         }
 
-        foreach ($this->routes as $route) {
-            if ($route['method'] !== $method) {
-                continue;
+        foreach ($candidates as $path) {
+            foreach ($this->routes as $route) {
+                if ($route['method'] !== $method) {
+                    continue;
+                }
+
+                $pattern = '#^' . preg_replace('/\{(\w+)\}/', '(?P<$1>[^/]+)', $route['path']) . '$#';
+
+                if (!preg_match($pattern, $path, $matches)) {
+                    continue;
+                }
+
+                $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+
+                foreach ($route['middleware'] as $mw) {
+                    $mw($params);
+                }
+
+                call_user_func($route['handler'], $params);
+                return;
             }
-
-            $pattern = '#^' . preg_replace('/\{(\w+)\}/', '(?P<$1>[^/]+)', $route['path']) . '$#';
-
-            if (!preg_match($pattern, $path, $matches)) {
-                continue;
-            }
-
-            // Keep only named captures as route params
-            $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
-
-            foreach ($route['middleware'] as $mw) {
-                $mw($params);
-            }
-
-            call_user_func($route['handler'], $params);
-            return;
         }
 
         Response::error('Route not found', 404);

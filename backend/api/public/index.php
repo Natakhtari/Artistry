@@ -34,6 +34,7 @@ require_once $src . '/controllers/BlogPostController.php';
 require_once $src . '/controllers/TagController.php';
 require_once $src . '/controllers/NewsController.php';
 require_once $src . '/controllers/MessageController.php';
+require_once $src . '/controllers/HealthController.php';
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 $jwtSecret = getenv('JWT_SECRET') ?: '';
@@ -48,7 +49,13 @@ JWT::init($jwtSecret);
 set_exception_handler(function (Throwable $e): void {
     error_log($e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code(500);
-    echo json_encode(['error' => 'Internal server error']);
+    $out = ['error' => 'Internal server error'];
+    if (getenv('DEBUG_ERRORS') === '1' || getenv('APP_DEBUG') === '1') {
+        $out['detail'] = $e->getMessage();
+        $out['file']   = basename($e->getFile());
+        $out['line']   = $e->getLine();
+    }
+    echo json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 });
 
@@ -57,6 +64,20 @@ $auth = [AuthMiddleware::class, 'handle'];
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 $router = new Router();
+
+// Root — many hosts open "/" and expect a hint (otherwise "Route not found")
+$router->get('/', function (array $_params): void {
+    Response::ok([
+        'service' => 'Artistry API',
+        'docs'    => 'See repo README / docs/DEPLOY.md',
+        'health'  => '/api/health',
+    ], 'OK');
+});
+
+// Health (no auth) — register both paths so Render / proxies always match
+$health_c = new HealthController();
+$router->get('/health', [$health_c, 'ping']);
+$router->get('/api/health', [$health_c, 'ping']);
 
 // Auth
 $auth_c = new AuthController();

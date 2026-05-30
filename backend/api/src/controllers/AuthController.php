@@ -43,6 +43,9 @@ class AuthController
         }
 
         $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+        if ($hash === false) {
+            Response::error('Password hashing failed', 500);
+        }
 
         $stmt = $db->prepare(
             'INSERT INTO users (username, email, password_hash, first_name, last_name)

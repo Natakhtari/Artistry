@@ -177,6 +177,7 @@ GitHub Pages is `https://username.github.io/repo/` — add that exact origin to 
 | Cloudflare: `npm ci` / missing or invalid `package-lock.json` | Pull latest repo: root **`package.json`** + **`package-lock.json`** are a minimal no-deps project so `npm clean-install` succeeds. Or set **`SKIP_DEPENDENCY_INSTALL`**=`1` and redeploy. |
 | Browser: CORS error | `CORS_ORIGIN` mismatch (www vs non-www, http vs https) |
 | Register/login **500** (Neon pooler + Render) | Redeploy API with latest **`Database.php`**: emulated PDO prepares are enabled when `DB_HOST` is not `postgres`/`127.0.0.1`. Also set **`DB_SSLMODE=require`**, confirm **`init.sql`** ran on Neon. **Render → Logs** shows the real SQL error if it persists. |
+| Debug any **500** | Set **`DEBUG_ERRORS=1`** on Render (env), redeploy, retry — JSON will include **`detail`** (then set back to **`0`**). Or open **`GET https://YOUR-API.onrender.com/api/health`** on the **Render** host (not the Workers frontend URL). **`{"error":"Route not found"}`** usually means wrong path (use **`/api/health`**, not `/health` alone if your app strips prefix) or old deploy — pull latest and redeploy. |
 | API: DB connection failed | Wrong `DB_HOST` / SSL; Neon needs SSL on port 5432 |
 | 401 on everything | JWT or clock skew; clear `localStorage` and log in again |
 | Uploads disappear | Free Render disk is ephemeral — use object storage for production |
