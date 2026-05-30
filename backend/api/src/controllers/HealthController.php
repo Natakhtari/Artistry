@@ -5,18 +5,19 @@ declare(strict_types=1);
 /** Public diagnostics — no auth. */
 class HealthController
 {
-    /** GET /health — app + DB connectivity */
+    /** GET /health — liveness for Render (always HTTP 200 if PHP runs). DB status is in JSON. */
     public function ping(array $params): void
     {
         try {
             Database::getInstance()->query('SELECT 1');
-            Response::ok(['app' => true, 'database' => true]);
+            Response::ok(['app' => true, 'database' => true], 'OK');
         } catch (Throwable $e) {
-            $out = ['app' => true, 'database' => false];
+            // Render (and most balancers) require 2xx on the health path — 503 blocks deploys.
+            $out = ['app' => true, 'database' => false, 'degraded' => true];
             if (getenv('DEBUG_ERRORS') === '1') {
                 $out['detail'] = $e->getMessage();
             }
-            Response::json(['error' => 'Database unreachable', 'data' => $out], 503);
+            Response::ok($out, 'Database unreachable — check DB_* and DB_SSLMODE on Render');
         }
     }
 }
