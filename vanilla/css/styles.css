@@ -220,6 +220,16 @@ a {
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
 }
 
+/* Create-post modal: Cropper.js needs visible overflow + image max-width none */
+.cpm-modal-scroll #cpm-preview {
+  overflow: visible;
+}
+
+#cpm-editor .cropper-view-box img,
+#cpm-crop-img {
+  max-width: none !important;
+}
+
 /*
  * Phone: bottom bar (<768px). Tablet: hamburger (768px–1279px). Desktop: top tabs (1280px+).
  */

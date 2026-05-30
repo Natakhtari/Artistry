@@ -1,6 +1,7 @@
 import { Component } from './Component.js';
 import { router } from '../router.js';
 import { stateManager } from '../utils/state.js';
+import { api } from '../utils/api.js';
 import { CreatePostModal } from './CreatePostModal.js';
 
 /** Viewport width at or above this uses top tabs (desktop). Below tablet max = hamburger. */
@@ -15,6 +16,26 @@ export class Navigation extends Component {
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', this._onResize);
     }
+    window.addEventListener('artistry-notifications-updated', () => this._refreshNotifBadge());
+  }
+
+  _refreshNotifBadge() {
+    const badges = document.querySelectorAll('.artistry-notif-badge');
+    if (!badges.length) return;
+    if (!stateManager.getState().isAuthenticated) {
+      badges.forEach((b) => b.classList.add('hidden'));
+      return;
+    }
+    api.notifications
+      .unreadCount()
+      .then((r) => {
+        const c = r?.data?.count ?? 0;
+        badges.forEach((b) => {
+          b.textContent = c > 99 ? '99+' : String(c);
+          b.classList.toggle('hidden', c === 0);
+        });
+      })
+      .catch(() => {});
   }
 
   getViewportMode() {
@@ -216,7 +237,14 @@ export class Navigation extends Component {
       { path: '/messages', icon: 'message-circle', label: 'Messages', showOnMobile: true },
       { path: '/notifications', icon: 'bell', label: 'Notifications', showOnMobile: true },
       { path: '/profile', icon: 'user', label: 'Profile', showOnMobile: true },
-      { path: 'create', icon: 'plus', label: 'Add Post', showOnMobile: false, isButton: true }
+      {
+        path: 'create',
+        icon: 'plus',
+        label: 'Add Post',
+        mobileLabel: 'Post',
+        showOnMobile: true,
+        isButton: true
+      }
     ];
 
     links.forEach((link) => {
@@ -241,13 +269,38 @@ export class Navigation extends Component {
           this.openCreateModal();
         });
         navLinksDesktop.appendChild(desktopCreate);
+
+        if (link.showOnMobile) {
+          const mobileCreate = this.createElement('button', {
+            type: 'button',
+            className:
+              'flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 py-2 rounded-lg transition-all text-white',
+            style: 'background-color: #F25C54',
+            'aria-label': link.label
+          });
+          mobileCreate.appendChild(this.createIcon(link.icon, 'w-5 h-5 flex-shrink-0'));
+          mobileCreate.appendChild(
+            this.createElement(
+              'span',
+              { className: 'text-[10px] font-medium leading-none truncate w-full text-center px-0.5' },
+              link.mobileLabel || link.label
+            )
+          );
+          mobileCreate.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.openCreateModal();
+          });
+          navLinksMobile.appendChild(mobileCreate);
+        }
         return;
       }
 
       const isActive = this.isLinkActive(link.path);
+      const notifExtra =
+        link.path === '/notifications' && state.isAuthenticated ? ' relative' : '';
       const desktopLink = this.createElement('a', {
         href: link.path,
-        className: `flex flex-row items-center justify-center gap-2 py-2 px-4 rounded-lg transition-all ${
+        className: `flex flex-row items-center justify-center gap-2 py-2 px-4 rounded-lg transition-all${notifExtra} ${
           isActive ? 'text-primary bg-primary/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'
         }`,
         style: isActive ? 'color: #F25C54' : ''
@@ -256,6 +309,14 @@ export class Navigation extends Component {
       desktopLink.appendChild(
         this.createElement('span', { className: 'text-sm font-medium leading-none' }, link.label)
       );
+      if (link.path === '/notifications' && state.isAuthenticated) {
+        desktopLink.appendChild(
+          this.createElement('span', {
+            className:
+              'artistry-notif-badge absolute top-0.5 right-0.5 min-w-[1rem] h-4 px-1 rounded-full bg-primary text-[10px] font-bold leading-4 text-white text-center hidden'
+          }, '0')
+        );
+      }
       desktopLink.addEventListener('click', (e) => {
         e.preventDefault();
         this.closeTabletMenu();
@@ -264,9 +325,11 @@ export class Navigation extends Component {
       navLinksDesktop.appendChild(desktopLink);
 
       if (link.showOnMobile) {
+        const notifM =
+          link.path === '/notifications' && state.isAuthenticated ? ' relative' : '';
         const mobileLink = this.createElement('a', {
           href: link.path,
-          className: `flex flex-col items-center justify-center gap-0.5 py-2 rounded-lg transition-all w-16 ${
+          className: `flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 py-2 rounded-lg transition-all${notifM} ${
             isActive ? 'text-primary bg-primary/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'
           }`,
           style: isActive ? 'color: #F25C54' : ''
@@ -275,6 +338,14 @@ export class Navigation extends Component {
         mobileLink.appendChild(
           this.createElement('span', { className: 'text-[10px] font-medium leading-none' }, link.label)
         );
+        if (link.path === '/notifications' && state.isAuthenticated) {
+          mobileLink.appendChild(
+            this.createElement('span', {
+              className:
+                'artistry-notif-badge absolute top-0.5 right-1 min-w-[0.875rem] h-3.5 px-0.5 rounded-full bg-primary text-[9px] font-bold leading-[0.875rem] text-white text-center hidden'
+            }, '0')
+          );
+        }
         mobileLink.addEventListener('click', (e) => {
           e.preventDefault();
           router.navigate(link.path);
@@ -363,15 +434,25 @@ export class Navigation extends Component {
       }
 
       const isActive = this.isLinkActive(link.path);
+      const rowNotif =
+        link.path === '/notifications' && state.isAuthenticated ? ' relative' : '';
       const row = this.createElement('a', {
         href: link.path,
-        className: `flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${
+        className: `flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors${rowNotif} ${
           isActive ? 'text-primary bg-primary/10' : 'text-slate-300 hover:bg-slate-800'
         }`,
         style: isActive ? 'color: #F25C54' : ''
       });
       row.appendChild(this.createIcon(link.icon, 'w-5 h-5 flex-shrink-0'));
       row.appendChild(this.createElement('span', { className: 'font-medium' }, link.label));
+      if (link.path === '/notifications' && state.isAuthenticated) {
+        row.appendChild(
+          this.createElement('span', {
+            className:
+              'artistry-notif-badge ml-auto min-w-[1rem] h-4 px-1 rounded-full bg-primary text-[10px] font-bold leading-4 text-white text-center hidden'
+          }, '0')
+        );
+      }
       row.addEventListener('click', (e) => {
         e.preventDefault();
         this.closeTabletMenu();
@@ -405,6 +486,7 @@ export class Navigation extends Component {
       }
     };
     document.addEventListener('keydown', this._escapeHandler);
+    queueMicrotask(() => this._refreshNotifBadge());
   }
 
   openCreateModal() {

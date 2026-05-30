@@ -32,7 +32,8 @@ export class CreatePostModal extends Component {
     });
 
     const modal = this.createElement('div', {
-      className: 'bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto'
+      className:
+        'bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-x-hidden overflow-y-auto cpm-modal-scroll'
     });
 
     modal.appendChild(this._buildHeader());
@@ -718,16 +719,21 @@ export class CreatePostModal extends Component {
     this._destroyCropper();
     this._pendingFile = file;
     const url = URL.createObjectURL(file);
+    this._pendingUrl = url;
 
     const uploadArea = document.getElementById('cpm-upload-area');
     const preview    = document.getElementById('cpm-preview');
     if (uploadArea) uploadArea.classList.add('hidden');
-    if (preview) { preview.classList.remove('hidden'); preview.innerHTML = ''; }
+    if (preview) {
+      preview.classList.remove('hidden');
+      preview.classList.add('overflow-visible');
+      preview.innerHTML = '';
+    }
 
     // ── editor panel ──────────────────────────────────────────────────────
     const editor = this.createElement('div', {
       id: 'cpm-editor',
-      className: 'bg-slate-900 rounded-xl overflow-hidden border border-slate-700'
+      className: 'bg-slate-900 rounded-xl border border-slate-700 overflow-visible'
     });
 
     // header
@@ -740,6 +746,7 @@ export class CreatePostModal extends Component {
 
     // skip button
     const skipBtn = this.createElement('button', {
+      type: 'button',
       className: 'text-xs text-slate-400 hover:text-white transition-colors px-3 py-1 rounded-lg hover:bg-slate-700'
     }, 'Skip editing');
     skipBtn.addEventListener('click', () => this._skipEditing());
@@ -748,15 +755,19 @@ export class CreatePostModal extends Component {
 
     // cropper canvas area
     const canvasWrap = this.createElement('div', {
-      className: 'relative bg-black flex items-center justify-center',
-      style: { maxHeight: '340px', minHeight: '220px' }
+      className: 'relative bg-black flex items-center justify-center cpm-cropper-wrap',
+      style: { maxHeight: 'min(55vh, 420px)', minHeight: '240px', width: '100%' }
     });
     const img = document.createElement('img');
-    img.id  = 'cpm-crop-img';
+    img.id = 'cpm-crop-img';
+    img.alt = '';
     img.src = url;
-    img.style.maxWidth  = '100%';
-    img.style.maxHeight = '340px';
-    img.style.display   = 'block';
+    // Cropper.js requires max-width: none on the image (100% breaks the crop box).
+    img.style.display = 'block';
+    img.style.maxWidth = 'none';
+    img.style.width = '100%';
+    img.style.height = 'auto';
+    img.style.maxHeight = 'min(55vh, 420px)';
     canvasWrap.appendChild(img);
     editor.appendChild(canvasWrap);
 
@@ -776,17 +787,19 @@ export class CreatePostModal extends Component {
     ];
     ratios.forEach(({ label, val }, i) => {
       const rb = this.createElement('button', {
+        type: 'button',
         'data-ratio': label,
         className: `text-xs px-3 py-1 rounded-full flex-shrink-0 transition-colors ${
           i === 0 ? 'bg-primary text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
         }`
       }, label);
       rb.addEventListener('click', () => {
-        document.querySelectorAll('[data-ratio]').forEach(b => {
-          b.className = 'text-xs px-3 py-1 rounded-full flex-shrink-0 transition-colors bg-slate-700 hover:bg-slate-600 text-slate-300';
+        ratioBar.querySelectorAll('[data-ratio]').forEach((b) => {
+          b.className =
+            'text-xs px-3 py-1 rounded-full flex-shrink-0 transition-colors bg-slate-700 hover:bg-slate-600 text-slate-300';
         });
         rb.className = 'text-xs px-3 py-1 rounded-full flex-shrink-0 transition-colors bg-primary text-white';
-        if (this._cropper) this._cropper.setAspectRatio(isNaN(val) ? NaN : val);
+        if (this._cropper) this._cropper.setAspectRatio(Number.isFinite(val) ? val : NaN);
       });
       ratioBar.appendChild(rb);
     });
@@ -808,7 +821,7 @@ export class CreatePostModal extends Component {
       { icon: 'maximize-2',         label: 'Fit',       action: () => this._cropper?.reset()     },
     ];
     tools.forEach(({ icon, label, action }) => {
-      const btn = this.createElement('button', { className: toolBtnClass });
+      const btn = this.createElement('button', { type: 'button', className: toolBtnClass });
       btn.appendChild(this.createIcon(icon, 'w-4 h-4'));
       btn.appendChild(document.createTextNode(label));
       btn.addEventListener('click', action);
@@ -822,11 +835,14 @@ export class CreatePostModal extends Component {
     });
 
     const cancelBtn = this.createElement('button', {
+      type: 'button',
       className: 'px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors'
     }, 'Cancel');
     cancelBtn.addEventListener('click', () => this._cancelEditor());
 
     const applyBtn = this.createElement('button', {
+      id:        'cpm-apply-crop-btn',
+      type:      'button',
       className: 'px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded-lg transition-colors font-medium flex items-center gap-2'
     });
     applyBtn.appendChild(this.createIcon('check', 'w-4 h-4'));
@@ -839,19 +855,43 @@ export class CreatePostModal extends Component {
 
     if (preview) preview.appendChild(editor);
 
-    // boot cropper after DOM paint
-    requestAnimationFrame(() => {
+    const bootCropper = () => {
+      if (!document.body.contains(img) || this._cropper) return;
       this._scaleX = 1;
       this._scaleY = 1;
-      this._cropper = new Cropper(img, {
-        viewMode:   1,
-        dragMode:   'move',
-        autoCropArea: 0.85,
-        responsive: true,
-        background: true,
-      });
+      if (typeof window.Cropper !== 'function') {
+        toast.show('Image editor failed to load. Check your network and refresh.', 'error');
+        return;
+      }
+      try {
+        this._cropper = new window.Cropper(img, {
+          viewMode:     1,
+          dragMode:     'move',
+          autoCropArea: 0.85,
+          responsive:   true,
+          background:   true,
+          checkOrientation: true,
+        });
+      } catch (err) {
+        console.error(err);
+        toast.show('Could not start crop tool for this image.', 'error');
+      }
       if (window.lucide) window.lucide.createIcons();
-    });
+    };
+
+    if (img.complete && img.naturalWidth > 0) {
+      requestAnimationFrame(bootCropper);
+    } else {
+      img.addEventListener('load', () => requestAnimationFrame(bootCropper), { once: true });
+      img.addEventListener(
+        'error',
+        () => {
+          toast.show('Could not read this image file.', 'error');
+          this._cancelEditor();
+        },
+        { once: true }
+      );
+    }
   }
 
   _destroyCropper() {
@@ -866,7 +906,11 @@ export class CreatePostModal extends Component {
     const preview    = document.getElementById('cpm-preview');
     const fileInput  = document.getElementById('cpm-file-input');
     if (uploadArea) uploadArea.classList.remove('hidden');
-    if (preview)    { preview.classList.add('hidden'); preview.innerHTML = ''; }
+    if (preview) {
+      preview.classList.add('hidden');
+      preview.classList.remove('overflow-visible');
+      preview.innerHTML = '';
+    }
     if (fileInput)  fileInput.value = '';
   }
 
@@ -877,17 +921,62 @@ export class CreatePostModal extends Component {
   }
 
   _applyCrop() {
-    if (!this._cropper) return;
-    const applyBtn = document.querySelector('#cpm-editor button:last-child');
-    if (applyBtn) { applyBtn.disabled = true; applyBtn.textContent = 'Applying…'; }
+    const applyBtn = document.getElementById('cpm-apply-crop-btn');
+    const restoreApplyBtn = () => {
+      if (!applyBtn) return;
+      applyBtn.disabled = false;
+      applyBtn.replaceChildren();
+      applyBtn.appendChild(this.createIcon('check', 'w-4 h-4'));
+      applyBtn.appendChild(document.createTextNode('Apply Crop'));
+      if (window.lucide) window.lucide.createIcons();
+    };
 
-    const canvas = this._cropper.getCroppedCanvas({ maxWidth: 2048, maxHeight: 2048 });
-    canvas.toBlob((blob) => {
-      const file = new File([blob], this._pendingFile?.name || 'photo.jpg', { type: 'image/jpeg' });
-      const url  = URL.createObjectURL(blob);
-      this._destroyCropper();
-      this._commitFile(file, url);
-    }, 'image/jpeg', 0.92);
+    if (!this._cropper) {
+      toast.show('Crop tool is not ready yet.', 'error');
+      return;
+    }
+
+    if (applyBtn) {
+      applyBtn.disabled = true;
+      applyBtn.replaceChildren(document.createTextNode('Applying…'));
+    }
+
+    let canvas;
+    try {
+      canvas = this._cropper.getCroppedCanvas({
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high',
+      });
+    } catch (err) {
+      console.error(err);
+      toast.show('Could not read the cropped image.', 'error');
+      restoreApplyBtn();
+      return;
+    }
+
+    if (!canvas || typeof canvas.toBlob !== 'function') {
+      toast.show('Could not read the cropped image.', 'error');
+      restoreApplyBtn();
+      return;
+    }
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          toast.show('Could not create image file.', 'error');
+          restoreApplyBtn();
+          return;
+        }
+        const file = new File([blob], this._pendingFile?.name || 'photo.jpg', { type: 'image/jpeg' });
+        const newUrl = URL.createObjectURL(blob);
+        this._destroyCropper();
+        this._commitFile(file, newUrl);
+      },
+      'image/jpeg',
+      0.92
+    );
   }
 
   _commitFile(file, url) {
@@ -904,6 +993,7 @@ export class CreatePostModal extends Component {
 
     uploadArea.classList.add('hidden');
     preview.classList.remove('hidden');
+    preview.classList.remove('overflow-visible');
     preview.innerHTML = '';
 
     const wrap = this.createElement('div', { className: 'relative' });
@@ -925,7 +1015,9 @@ export class CreatePostModal extends Component {
     });
     editBtn.appendChild(this.createIcon('crop', 'w-3 h-3'));
     editBtn.appendChild(document.createTextNode('Edit'));
-    editBtn.addEventListener('click', () => this._openEditor(this._pendingFile || file));
+    editBtn.addEventListener('click', () => {
+      if (this.uploadedFile) this._openEditor(this.uploadedFile);
+    });
     wrap.appendChild(editBtn);
 
     const removeBtn = this.createElement('button', {
@@ -950,7 +1042,11 @@ export class CreatePostModal extends Component {
     const preview    = document.getElementById('cpm-preview');
     const fileInput  = document.getElementById('cpm-file-input');
     if (uploadArea) uploadArea.classList.remove('hidden');
-    if (preview)    { preview.classList.add('hidden'); preview.innerHTML = ''; }
+    if (preview) {
+      preview.classList.add('hidden');
+      preview.classList.remove('overflow-visible');
+      preview.innerHTML = '';
+    }
     if (fileInput)  fileInput.value = '';
   }
 

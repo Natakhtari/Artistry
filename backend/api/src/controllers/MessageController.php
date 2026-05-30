@@ -128,6 +128,10 @@ class MessageController
         ]);
         $msg = $stmt->fetch();
 
+        $msgId = (int) ($msg['id'] ?? 0);
+        $preview = $text !== '' ? $text : (($mediaUrl !== '') ? 'Sent a photo' : 'Message');
+        NotificationService::notify($db, $partnerId, $me, 'new_message', 'direct_message', $msgId > 0 ? $msgId : null, $preview);
+
         // Attach sender info for immediate render
         $u = $db->prepare('SELECT username, p.profile_picture_url AS avatar FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id = :id');
         $u->execute(['id' => $me]);
@@ -164,12 +168,17 @@ class MessageController
             $db->prepare('INSERT INTO message_likes (message_id, user_id) VALUES (:mid, :uid)')
                ->execute(['mid' => $messageId, 'uid' => $me]);
             $liked = true;
+
+            $senderStmt = $db->prepare('SELECT sender_id FROM direct_messages WHERE id = :mid');
+            $senderStmt->execute(['mid' => $messageId]);
+            $senderId = (int) ($senderStmt->fetchColumn() ?: 0);
+            if ($senderId > 0 && $senderId !== $me) {
+                NotificationService::notify($db, $senderId, $me, 'message_liked', 'direct_message', $messageId, null);
+            }
         } else {
             $liked = false;
         }
 
-        $cnt = (int) $db->prepare('SELECT COUNT(*) FROM message_likes WHERE message_id = :mid')
-                         ->execute(['mid' => $messageId]) && null;
         $cntStmt = $db->prepare('SELECT COUNT(*) AS c FROM message_likes WHERE message_id = :mid');
         $cntStmt->execute(['mid' => $messageId]);
         $count = (int) $cntStmt->fetchColumn();

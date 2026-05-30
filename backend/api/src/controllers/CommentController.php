@@ -112,6 +112,15 @@ class CommentController
         $stmt->execute(['uid' => $userId, 'body' => $text, 'ct' => $contentType, 'oid' => $objectId]);
         $comment = $stmt->fetch();
 
+        $ownerStmt = $contentType === 'artwork'
+            ? $db->prepare('SELECT user_id FROM artworks WHERE id = :id')
+            : $db->prepare('SELECT user_id FROM blog_posts WHERE id = :id');
+        $ownerStmt->execute(['id' => $objectId]);
+        $ownerId = (int) ($ownerStmt->fetchColumn() ?: 0);
+        if ($ownerId > 0) {
+            NotificationService::notify($db, $ownerId, $userId, 'comment', $contentType, $objectId, $text);
+        }
+
         // Attach author info so the frontend can render immediately
         $user = $db->prepare('SELECT u.username, p.profile_picture_url AS avatar FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.id = :id');
         $user->execute(['id' => $userId]);

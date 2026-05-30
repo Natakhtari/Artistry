@@ -28,6 +28,20 @@ class LikeController
         $stmt->execute(['uid' => $userId, 'ct' => $contentType, 'oid' => $objectId]);
         $result = $stmt->fetchColumn(); // 'liked' | 'unliked'
 
+        // Notify content owner (likes only; un-like removes matching notification)
+        $ownerStmt = $contentType === 'artwork'
+            ? $db->prepare('SELECT user_id FROM artworks WHERE id = :id')
+            : $db->prepare('SELECT user_id FROM blog_posts WHERE id = :id');
+        $ownerStmt->execute(['id' => $objectId]);
+        $ownerId = (int) ($ownerStmt->fetchColumn() ?: 0);
+        if ($ownerId > 0) {
+            if ($result === 'liked') {
+                NotificationService::notify($db, $ownerId, $userId, 'like', $contentType, $objectId, null);
+            } else {
+                NotificationService::retractLike($db, $ownerId, $userId, $contentType, $objectId);
+            }
+        }
+
         // Return updated count
         $count = $db->prepare(
             'SELECT COUNT(*) FROM likes WHERE content_type = :ct AND object_id = :oid'

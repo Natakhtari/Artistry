@@ -701,6 +701,10 @@ export class MessagesPage extends Component {
         this._scrollToBottom();
         if (window.lucide) window.lucide.createIcons();
         this._refreshConvList();
+        const meId = stateManager.getState().currentUser?.id;
+        if (meId && msgs.some((m) => Number(m.sender_id) !== Number(meId))) {
+          window.dispatchEvent(new Event('artistry-notifications-updated'));
+        }
       }
     } catch { /* non-fatal */ }
   }

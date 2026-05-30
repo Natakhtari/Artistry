@@ -22,3 +22,22 @@ CREATE TABLE IF NOT EXISTS message_likes (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (message_id, user_id)
 );
+
+-- In-app notifications (see migrations/003_notifications.sql)
+CREATE TABLE IF NOT EXISTS notifications (
+  id            SERIAL PRIMARY KEY,
+  user_id       INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  actor_id      INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type          VARCHAR(40) NOT NULL,
+  object_type   VARCHAR(40),
+  object_id     INT,
+  body_preview  VARCHAR(240),
+  read_at       TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created
+  ON notifications (user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
+  ON notifications (user_id) WHERE read_at IS NULL;

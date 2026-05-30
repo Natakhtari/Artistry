@@ -44,7 +44,7 @@ You get **free HTTPS subdomains** from each provider (e.g. `*.pages.dev`, `*.onr
 1. Create a project at [neon.tech](https://neon.tech).
 2. Copy the **connection string** (looks like `postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require`).
 3. In the Neon SQL editor, run **`backend/db/init.sql`** from this repo (paste full file, execute).
-4. Then run **`backend/db/deploy_extras.sql`** for direct messages and message likes.
+4. Then run **`backend/db/deploy_extras.sql`** for direct messages, message likes, and the **`notifications`** table (in-app alerts).
 
 ### Supabase
 
@@ -100,13 +100,30 @@ After deploy, note the service URL, e.g. `https://artistry-api.onrender.com`.
    - The API URL is set in `index.html` (`ARTISTRY_API_BASE`), not here, unless you prefer a build-time variable.
 5. After first deploy, copy the site URL, e.g. `https://artistry-web.pages.dev`.
 
+**SPA deep links (refresh on `/profile`, `/feed`, …):** the build output includes **`vanilla/_redirects`** with `/* /index.html 200` so Cloudflare Pages serves `index.html` for unknown paths. **`vanilla/index.html`** uses `<base href="/" />` and root-relative **`/js/app.js`**, **`/css/styles.css`** so scripts still load when the URL path is not `/`.
+
+### Cloudflare Workers (`*.workers.dev`) instead of Pages
+
+If you deploy the `vanilla/` folder as a **Worker with static assets** (not Pages), the host has no `_redirects` file. Use the repo-root **`wrangler.toml`**:
+
+- **`[assets]`** → `directory = "./vanilla"`
+- **`not_found_handling = "single-page-application"`** so `/profile` and similar return **`/index.html`** with **200** (see [SPA routing](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/)).
+
+From the repo root (with [Wrangler](https://developers.cloudflare.com/workers/wrangler/install-and-update/) logged in):
+
+```bash
+npx wrangler deploy
+```
+
+Adjust **`name`** in `wrangler.toml` if it clashes with an existing Worker. Redeploy after pulling these changes.
+
 ### Point the app at your API
 
 In `vanilla/index.html`, **uncomment** and set the script **before** `app.js`:
 
 ```html
 <script>window.ARTISTRY_API_BASE = 'https://artistry-api.onrender.com/api';</script>
-<script type="module" src="js/app.js"></script>
+<script type="module" src="/js/app.js"></script>
 ```
 
 Commit and push; Pages will rebuild.
@@ -162,7 +179,7 @@ GitHub Pages is `https://username.github.io/repo/` — add that exact origin to 
 
 ## Checklist
 
-- [ ] Postgres created; `init.sql` + `deploy_extras.sql` applied  
+- [ ] Postgres created; `init.sql` + `deploy_extras.sql` applied (includes chat + notifications)  
 - [ ] API deployed; `/api/...` responds  
 - [ ] `JWT_SECRET` strong and unique  
 - [ ] `CORS_ORIGIN` = frontend URL (no trailing slash)  
@@ -176,6 +193,7 @@ GitHub Pages is `https://username.github.io/repo/` — add that exact origin to 
 | Cloudflare: `npm error ENOENT package.json` | Set **`SKIP_DEPENDENCY_INSTALL`** = **`1`** and build command **`exit 0`**; output dir **`vanilla`**. |
 | Cloudflare: `npm ci` / missing or invalid `package-lock.json` | Pull latest repo: root **`package.json`** + **`package-lock.json`** are a minimal no-deps project so `npm clean-install` succeeds. Or set **`SKIP_DEPENDENCY_INSTALL`**=`1` and redeploy. |
 | Browser: CORS error | `CORS_ORIGIN` mismatch (www vs non-www, http vs https) |
+| **Refresh on `/profile` (etc.) → 404** on Cloudflare **Workers** | Deploy with repo **`wrangler.toml`** (`not_found_handling = "single-page-application"`) or migrate to **Pages** so **`vanilla/_redirects`** applies. Ensure **`index.html`** has **`<base href="/">`** and **`/js/app.js`** (pull latest). |
 | Register/login **500** | Usually Postgres from Render → Neon: set **`DB_SSLMODE=require`**, use **hostname-only** `DB_HOST`, redeploy. Enable **`DEBUG_ERRORS=1`** temporarily to read **`detail`**. |
 | **`GET /api/health` returns 503** (older builds) | That was “DB down” — Render treats **503 as unhealthy** and blocks deploy. Latest code returns **200** with **`database":false`** when Postgres fails so the service can start; fix **`DB_HOST`**, **`DB_USER`**, **`DB_PASS`**, **`DB_NAME`**, **`DB_SSLMODE=require`** on Render, then reload `/api/health` until **`database":true`**. |
 | Debug any **500** | Set **`DEBUG_ERRORS=1`** on Render (env), redeploy, retry — JSON will include **`detail`** (then set back to **`0`**). Or open **`GET https://YOUR-API.onrender.com/api/health`** on the **Render** host (not the Workers frontend URL). **`{"error":"Route not found"}`** usually means wrong path (use **`/api/health`**, not `/health` alone if your app strips prefix) or old deploy — pull latest and redeploy. |

@@ -211,4 +211,12 @@ export const api = {
     poll:          (userId, afterId)=> request('GET',  `/messages/${userId}/poll?after=${afterId}`, null, true),
     react:         (messageId)      => request('POST', `/messages/react/${messageId}`,         null, true),
   },
+
+  notifications: {
+    list:         (p = {}) => request('GET', `/notifications?${new URLSearchParams(p)}`, null, true),
+    unreadCount:  ()         => request('GET', '/notifications/unread-count', null, true),
+    markRead:     ()         => request('POST', '/notifications/mark-read', {}, true),
+    clear:        ()         => request('DELETE', '/notifications/clear', null, true),
+    remove:       (id)       => request('DELETE', `/notifications/${id}`, null, true),
+  },
 };

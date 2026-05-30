@@ -34,6 +34,8 @@ require_once $src . '/controllers/BlogPostController.php';
 require_once $src . '/controllers/TagController.php';
 require_once $src . '/controllers/NewsController.php';
 require_once $src . '/controllers/MessageController.php';
+require_once $src . '/NotificationService.php';
+require_once $src . '/controllers/NotificationController.php';
 require_once $src . '/controllers/HealthController.php';
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
@@ -154,6 +156,14 @@ $router->post('/messages/react/{messageId}',    [$msg_c, 'react'],         [$aut
 $router->get( '/messages/{userId}',             [$msg_c, 'thread'],        [$auth]);
 $router->post('/messages/{userId}',             [$msg_c, 'send'],          [$auth]);
 $router->get( '/messages/{userId}/poll',        [$msg_c, 'poll'],          [$auth]);
+
+// Notifications (auth)
+$notif_c = new NotificationController();
+$router->get(   '/notifications/unread-count', [$notif_c, 'unreadCount'], [$auth]);
+$router->post(  '/notifications/mark-read',     [$notif_c, 'markRead'],    [$auth]);
+$router->delete('/notifications/clear',         [$notif_c, 'clear'],       [$auth]);
+$router->get(   '/notifications',               [$notif_c, 'index'],       [$auth]);
+$router->delete('/notifications/{id}',         [$notif_c, 'destroy'],     [$auth]);
 
 // ── Dispatch ──────────────────────────────────────────────────────────────────
 $router->dispatch();

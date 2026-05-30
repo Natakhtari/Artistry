@@ -1,0 +1,12 @@
+# Cloudflare Workers — static SPA from vanilla/
+# Deploy from repo root: npx wrangler deploy
+#
+# Fixes hard refresh on /profile, /feed, etc.: non-file routes return index.html (200).
+# See: https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/
+
+name = "artistry"
+compatibility_date = "2025-05-01"
+
+[assets]
+directory = "./vanilla"
+not_found_handling = "single-page-application"

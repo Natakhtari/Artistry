@@ -52,7 +52,7 @@ class ArtworkController
     {
         $db   = Database::getInstance();
         $stmt = $db->prepare(
-            'SELECT a.id, a.title, a.description, a.status, a.created_at, a.published_at,
+            'SELECT a.id, a.title, a.description, a.content_type, a.status, a.created_at, a.published_at,
                     u.id AS user_id, u.username AS artist_username,
                     p.profile_picture_url AS artist_avatar,
                     (SELECT COUNT(*) FROM likes WHERE content_type = \'artwork\' AND object_id = a.id) AS like_count,

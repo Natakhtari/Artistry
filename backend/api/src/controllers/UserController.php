@@ -111,10 +111,14 @@ class UserController
             $db->prepare('DELETE FROM follows WHERE follower_id = :fr AND following_id = :fg')
                ->execute(['fr' => $followerId, 'fg' => $followingId]);
 
+            NotificationService::retractFollow($db, $followingId, $followerId);
+
             Response::ok(['following' => false], 'Unfollowed');
         } else {
             $db->prepare('INSERT INTO follows (follower_id, following_id) VALUES (:fr, :fg)')
                ->execute(['fr' => $followerId, 'fg' => $followingId]);
+
+            NotificationService::notify($db, $followingId, $followerId, 'follow', null, null, null);
 
             Response::ok(['following' => true], 'Following');
         }

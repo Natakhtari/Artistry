@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Deep links (/profile, …): base keeps /js/app.js at site root. For GitHub Pages project URLs only, set href to your repo path e.g. /Artistry/vanilla/ -->
+  <base href="/" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Artistry | The Best Portfolio Platform for Visual Artists</title>
@@ -94,7 +96,7 @@
   </script>
   
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="/css/styles.css">
   
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -129,6 +131,6 @@
   <!-- Production: REST API base URL (must end with /api). Uncomment and set your API host. -->
   <script>window.ARTISTRY_API_BASE = 'https://artistry-7o4z.onrender.com/api';</script>
   <!-- Main App Script (ES6 Module) -->
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="/js/app.js"></script>
 </body>
 </html>

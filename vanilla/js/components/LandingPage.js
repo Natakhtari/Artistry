@@ -1,5 +1,6 @@
 import { Component } from './Component.js';
 import { router } from '../router.js';
+import { api } from '../utils/api.js';
 
 export class LandingPage extends Component {
   render() {
@@ -165,59 +166,112 @@ export class LandingPage extends Component {
     }, 'Featured Artists');
 
     const grid = this.createElement('div', {
+      id: 'landing-featured-artists',
       className:
         'grid w-full grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6 sm:gap-x-6 sm:gap-y-6 justify-items-stretch'
     });
 
-    const artists = [
-      { name: 'Elena Rodriguez', avatar: 'https://i.pravatar.cc/150?img=1', followers: '15.2K' },
-      { name: 'Marcus Chen', avatar: 'https://i.pravatar.cc/150?img=12', followers: '12.8K' },
-      { name: 'Sophia Laurent', avatar: 'https://i.pravatar.cc/150?img=5', followers: '18.5K' },
-      { name: 'Alex Kim', avatar: 'https://i.pravatar.cc/150?img=13', followers: '10.3K' }
-    ];
-
-    artists.forEach(artist => {
-      const card = this.createElement('div', {
-        className: 'bg-slate-800 p-6 rounded-2xl text-center hover:bg-slate-700 transition-all card-hover cursor-pointer'
-      });
-
-      card.addEventListener('click', () => {
-        console.log('Artist card clicked:', artist.name);
-        const username = artist.name.toLowerCase().replace(/\s+/g, '-');
-        console.log('Navigating to:', `/user/${username}`);
-        router.navigate(`/user/${username}`);
-      });
-
-      const avatarContainer = this.createElement('div', {
-        className: 'w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden bg-slate-700'
-      });
-
-      const avatar = this.createElement('img', {
-        src: artist.avatar,
-        alt: `${artist.name}, featured artist on Artistry — ${artist.followers} followers`,
-        className: 'w-full h-full object-cover'
-      });
-
-      const name = this.createElement('h3', {
-        className: 'font-bold mb-1'
-      }, artist.name);
-
-      const followers = this.createElement('p', {
-        className: 'text-sm text-slate-400'
-      }, `${artist.followers} followers`);
-
-      avatarContainer.appendChild(avatar);
-      card.appendChild(avatarContainer);
-      card.appendChild(name);
-      card.appendChild(followers);
-      grid.appendChild(card);
-    });
+    grid.appendChild(
+      this.createElement('div', {
+        className: 'col-span-full text-center text-slate-400 text-sm py-6',
+        id: 'landing-artists-status'
+      }, 'Loading creators…')
+    );
 
     container.appendChild(title);
     container.appendChild(grid);
     section.appendChild(container);
 
     return section;
+  }
+
+  afterRender() {
+    super.afterRender();
+    const grid = document.getElementById('landing-featured-artists');
+    const status = document.getElementById('landing-artists-status');
+    if (!grid) return;
+
+    api.users
+      .list({ limit: 8, offset: 0 })
+      .then((res) => {
+        const items = res?.data?.items ?? [];
+        grid.innerHTML = '';
+        if (status) status.remove();
+
+        if (items.length === 0) {
+          grid.appendChild(
+            this.createElement(
+              'p',
+              { className: 'col-span-full text-center text-slate-400 text-sm py-6' },
+              'Creators will appear here as people join the community.'
+            )
+          );
+          if (window.lucide) window.lucide.createIcons();
+          return;
+        }
+
+        const fmtFollowers = (n) => {
+          const x = Number(n) || 0;
+          if (x >= 1_000_000) return `${(x / 1_000_000).toFixed(1)}M`;
+          if (x >= 1_000) return `${(x / 1_000).toFixed(1)}K`;
+          return String(x);
+        };
+
+        items.forEach((u) => {
+          const display =
+            (u.display_name && String(u.display_name).trim()) || u.username || 'Creator';
+          const card = this.createElement('div', {
+            className:
+              'bg-slate-800 p-6 rounded-2xl text-center hover:bg-slate-700 transition-all card-hover cursor-pointer'
+          });
+          card.addEventListener('click', () => {
+            if (u.username) router.navigate(`/user/${encodeURIComponent(u.username)}`);
+          });
+
+          const avatarContainer = this.createElement('div', {
+            className:
+              'w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center text-2xl font-bold text-slate-400'
+          });
+          if (u.profile_picture_url) {
+            const avatar = this.createElement('img', {
+              src:       u.profile_picture_url,
+              alt:       `${display} on Artistry`,
+              className: 'w-full h-full object-cover'
+            });
+            avatar.addEventListener('error', () => {
+              avatar.remove();
+              avatarContainer.textContent = (u.username || '?').charAt(0).toUpperCase();
+            });
+            avatarContainer.appendChild(avatar);
+          } else {
+            avatarContainer.textContent = (u.username || '?').charAt(0).toUpperCase();
+          }
+
+          card.appendChild(avatarContainer);
+          card.appendChild(
+            this.createElement('h3', { className: 'font-bold mb-1 truncate px-1' }, display)
+          );
+          card.appendChild(
+            this.createElement('p', { className: 'text-xs text-slate-500 mb-1 truncate px-1' }, `@${u.username}`)
+          );
+          card.appendChild(
+            this.createElement('p', { className: 'text-sm text-slate-400' }, `${fmtFollowers(u.followers_count)} followers`)
+          );
+          grid.appendChild(card);
+        });
+        if (window.lucide) window.lucide.createIcons();
+      })
+      .catch(() => {
+        grid.innerHTML = '';
+        if (status) status.remove();
+        grid.appendChild(
+          this.createElement(
+            'p',
+            { className: 'col-span-full text-center text-slate-400 text-sm py-6' },
+            'Could not load creators. Try again later.'
+          )
+        );
+      });
   }
 
   createCTASection() {
@@ -235,7 +289,7 @@ export class LandingPage extends Component {
 
     const subtitle = this.createElement('p', {
       className: 'text-xl text-slate-300 mb-12'
-    }, 'Join thousands of artists sharing their work on Artistry');
+    }, 'Join artists publishing portfolios, process, and stories on Artistry.');
 
     const button = this.createElement('button', {
       className: 'px-10 py-5 bg-primary hover:bg-primary-hover rounded-xl text-lg font-medium transition-all hover-scale'
