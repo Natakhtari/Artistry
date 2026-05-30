@@ -59,6 +59,8 @@ export class NotificationsPage extends Component {
     this.loading = true;
     this.loadError = null;
   }
+
+  render() {
     const container = this.createElement('div', {
       className:
         'min-h-screen pb-16 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-20'
