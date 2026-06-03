@@ -78,6 +78,7 @@ Render’s free web service can sleep after ~15 minutes idle (cold start ~30–6
    | `DB_SSLMODE` | `require` for Neon / Supabase (encrypted connection to Postgres) |
    | `JWT_SECRET` | `openssl rand -hex 32` |
    | `CORS_ORIGIN` | Your **frontend** URL with **no** trailing slash, e.g. `https://artistry-xxx.pages.dev` |
+   | `NEWS_API_KEY` | *(Optional)* [NewsAPI.org](https://newsapi.org) key — merged into **`GET /api/news`** with RSS; omit to use RSS-only (Hyperallergic, Colossal). The API host must allow **outbound HTTPS** for RSS and NewsAPI. |
 
 5. Check `Database.php` (or env usage) — if the app expects `DB_HOST` as hostname only, strip any `?sslmode=require` from host; enable SSL in PDO if required (Neon usually needs SSL).
 

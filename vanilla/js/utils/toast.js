@@ -187,6 +187,9 @@ function confirm(message, { confirmLabel = 'Confirm', cancelLabel = 'Cancel', da
 }
 
 export const toast = {
+  /** @param {string} message @param {'success'|'error'|'info'|'warning'} [type] @param {number} [duration] */
+  show: (message, type = 'info', duration = 3500) =>
+    show(message, STYLES[type] ? type : 'info', duration),
   success: (msg, dur) => show(msg, 'success', dur),
   error:   (msg, dur) => show(msg, 'error',   dur),
   info:    (msg, dur) => show(msg, 'info',     dur),

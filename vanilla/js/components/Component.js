@@ -30,7 +30,7 @@ export class Component {
 
   createElement(tag, attributes = {}, ...children) {
     const element = document.createElement(tag);
-    
+
     // Set attributes
     Object.keys(attributes).forEach(key => {
       if (key === 'className') {
@@ -40,6 +40,10 @@ export class Component {
         console.warn(`Warning: Use addEventListener instead of ${key} attribute`);
       } else if (key === 'style' && typeof attributes[key] === 'object') {
         Object.assign(element.style, attributes[key]);
+      } else if (key === 'value' && (tag === 'input' || tag === 'textarea' || tag === 'select')) {
+        element.value = attributes[key] == null ? '' : String(attributes[key]);
+      } else if (key === 'checked' && tag === 'input') {
+        element.checked = Boolean(attributes[key]);
       } else {
         element.setAttribute(key, attributes[key]);
       }

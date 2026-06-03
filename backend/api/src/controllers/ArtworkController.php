@@ -15,16 +15,22 @@ class ArtworkController
                        TRIM(COALESCE(u.first_name,\'\') || \' \' || COALESCE(u.last_name,\'\')) AS artist_name,
                        u.username AS artist_username,
                        p.profile_picture_url AS artist_avatar,
-                       m.file_url AS thumbnail,
+                       th.file_url AS thumbnail,
                        (SELECT file_url FROM media m2
-                        WHERE m2.artwork_id = a.id AND m2.media_type != \'image\'
-                        ORDER BY m2."order" LIMIT 1) AS media_src,
+                        WHERE m2.artwork_id = a.id AND m2.media_type IN (\'audio\', \'video\')
+                        ORDER BY m2."order" ASC LIMIT 1) AS media_src,
                        (SELECT COUNT(*) FROM likes WHERE content_type = \'artwork\' AND object_id = a.id) AS likes_count,
                        (SELECT COUNT(*) FROM comments WHERE content_type = \'artwork\' AND object_id = a.id) AS comments_count
                 FROM artworks a
                 JOIN users u ON a.user_id = u.id
                 LEFT JOIN profiles p ON u.id = p.user_id
-                LEFT JOIN media m ON a.id = m.artwork_id AND m."order" = 0
+                LEFT JOIN LATERAL (
+                    SELECT mo.file_url
+                    FROM media mo
+                    WHERE mo.artwork_id = a.id AND mo.media_type = \'image\'
+                    ORDER BY mo."order" ASC
+                    LIMIT 1
+                ) th ON true
                 WHERE a.status = \'published\'';
 
         $binds = [];
@@ -83,6 +89,7 @@ class ArtworkController
         $title       = trim($body['title']        ?? '');
         $description = trim($body['description']  ?? '');
         $mediaUrl    = trim($body['media_url']     ?? '');
+        $coverUrl    = trim($body['cover_url']     ?? '');
         $contentType = in_array($body['content_type'] ?? '', ['photo', 'video', 'podcast', 'article'], true)
                        ? $body['content_type'] : 'photo';
         $status      = in_array($body['status'] ?? 'published', ['draft', 'published'], true)
@@ -123,9 +130,22 @@ class ArtworkController
                 default   => 'image',
             };
 
-            $db->prepare(
-                'INSERT INTO media (artwork_id, media_type, file_url, "order") VALUES (:aid, :type, :url, 0)'
-            )->execute(['aid' => $artwork['id'], 'type' => $mediaTyp, 'url' => $mediaUrl]);
+            $useCover = $coverUrl !== ''
+                && filter_var($coverUrl, FILTER_VALIDATE_URL)
+                && in_array($contentType, ['podcast', 'video'], true);
+
+            if ($useCover) {
+                $db->prepare(
+                    'INSERT INTO media (artwork_id, media_type, file_url, "order") VALUES (:aid, \'image\', :url, 0)'
+                )->execute(['aid' => $artwork['id'], 'url' => $coverUrl]);
+                $db->prepare(
+                    'INSERT INTO media (artwork_id, media_type, file_url, "order") VALUES (:aid, :type, :url, 1)'
+                )->execute(['aid' => $artwork['id'], 'type' => $mediaTyp, 'url' => $mediaUrl]);
+            } else {
+                $db->prepare(
+                    'INSERT INTO media (artwork_id, media_type, file_url, "order") VALUES (:aid, :type, :url, 0)'
+                )->execute(['aid' => $artwork['id'], 'type' => $mediaTyp, 'url' => $mediaUrl]);
+            }
 
             $db->commit();
             Response::created($artwork, 'Post published');

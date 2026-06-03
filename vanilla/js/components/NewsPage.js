@@ -26,7 +26,7 @@ export class NewsPage extends Component {
     }, 'Artistry News & Creator Resources'));
     header.appendChild(this.createElement('p', {
       className: 'text-slate-400 text-xs md:text-sm mt-0.5 leading-snug'
-    }, 'Portfolio tips, pricing commissions, and art industry news.'));
+    }, 'Curated from our database plus art-world RSS (Hyperallergic, Colossal). Optional NewsAPI headlines when NEWS_API_KEY is set on the server.'));
 
     // Category filter bar
     const filterBar = this.createElement('div', {
@@ -143,11 +143,23 @@ export class NewsPage extends Component {
 
     if (article.image_url) {
       const img = this.createElement('img', {
-        src:       article.image_url,
-        alt:       `${article.title} — ${article.category ?? ''} article`,
-        className: 'w-full h-full object-cover group-hover:scale-110 transition-transform duration-300'
+        src:         article.image_url,
+        alt:         `${article.title} — ${article.category ?? ''} article`,
+        className:   'w-full h-full object-cover group-hover:scale-110 transition-transform duration-300',
+        loading:     'lazy',
+        referrerPolicy: 'no-referrer',
+      });
+      img.addEventListener('error', () => {
+        img.remove();
+        imgWrap.appendChild(this.createElement('div', {
+          className: 'w-full h-full flex items-center justify-center text-slate-500 text-sm px-4 text-center'
+        }, article.source_name || 'Article'));
       });
       imgWrap.appendChild(img);
+    } else {
+      imgWrap.appendChild(this.createElement('div', {
+        className: 'w-full h-full flex items-center justify-center text-slate-500 text-sm px-4 text-center'
+      }, article.source_name ? `${article.source_name}` : 'Art news'));
     }
 
     if (article.category) {

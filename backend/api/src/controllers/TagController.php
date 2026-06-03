@@ -77,14 +77,20 @@ class TagController
 
         $stmt = $db->prepare(
             'SELECT a.id, a.title, a.description, a.content_type, a.created_at,
-                    m.file_url AS thumbnail,
+                    th.file_url AS thumbnail,
                     (SELECT COUNT(*) FROM likes WHERE content_type = \'artwork\' AND object_id = a.id) AS likes_count,
                     u.id AS author_id, u.username,
                     p.profile_picture_url AS avatar
              FROM artworks a
              JOIN users u ON a.user_id = u.id
              LEFT JOIN profiles p ON u.id = p.user_id
-             LEFT JOIN media m ON a.id = m.artwork_id AND m."order" = 0
+             LEFT JOIN LATERAL (
+                 SELECT mo.file_url
+                 FROM media mo
+                 WHERE mo.artwork_id = a.id AND mo.media_type = \'image\'
+                 ORDER BY mo."order" ASC
+                 LIMIT 1
+             ) th ON true
              JOIN tagging tg ON tg.content_type = \'artwork\' AND tg.object_id = a.id
              WHERE tg.tag_id = :tid AND a.status = \'published\'
              ORDER BY a.created_at DESC

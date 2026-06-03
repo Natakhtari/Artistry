@@ -1094,13 +1094,20 @@ export class CreatePostModal extends Component {
     }
 
     const description = document.getElementById('cpm-desc')?.value?.trim() || '';
-    const res = await api.artworks.create({
+    const coverUrl    = document.getElementById('cpm-thumb-url')?.value?.trim() || '';
+
+    const body = {
       title,
       description,
       content_type: this.selectedType,
       media_url:    mediaUrl,
       status:       'published',
-    });
+    };
+    if ((this.selectedType === 'podcast' || this.selectedType === 'video') && coverUrl) {
+      body.cover_url = coverUrl;
+    }
+
+    const res = await api.artworks.create(body);
 
     const artworkId = res.data?.id;
     if (artworkId && tagNames.length) {
@@ -1108,12 +1115,17 @@ export class CreatePostModal extends Component {
     }
 
     const user = stateManager.getState().user ?? stateManager.getState().currentUser;
+    const previewThumb = (this.selectedType === 'podcast' || this.selectedType === 'video')
+      ? (coverUrl || null)
+      : mediaUrl;
     if (this.onSubmit) this.onSubmit({
       id:          artworkId,
       type:        this.selectedType,
-      image:       mediaUrl,
-      thumbnail:   mediaUrl,
+      image:       previewThumb,
+      thumbnail:   previewThumb,
+      media_src:   mediaUrl,
       artist:      user?.name || user?.username || 'You',
+      username:    user?.username || '',
       avatar:      user?.avatar || '',
       likes:       0,
       title,

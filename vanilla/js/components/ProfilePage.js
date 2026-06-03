@@ -342,7 +342,12 @@ export class ProfilePage extends Component {
   }
 
   openEditModal() {
-    const modal = new EditProfileModal();
+    const onDone = () => {
+      if (router.getCurrentRoute() === '/profile') {
+        router.navigate('/profile', true);
+      }
+    };
+    const modal = new EditProfileModal(onDone);
     modal.mount();
   }
 }

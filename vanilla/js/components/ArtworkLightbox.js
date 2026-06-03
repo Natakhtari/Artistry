@@ -3,6 +3,7 @@ import { stateManager } from '../utils/state.js';
 import { api } from '../utils/api.js';
 import { toast } from '../utils/toast.js';
 import { router } from '../router.js';
+import { spotifyEmbedSrc, isDirectAudioUrl } from '../utils/media.js';
 
 export class ArtworkLightbox extends Component {
   constructor() {
@@ -73,7 +74,7 @@ export class ArtworkLightbox extends Component {
       className: 'flex flex-col items-center justify-center gap-6 bg-gradient-to-br from-slate-900 to-slate-800 p-10 w-full md:w-[42vw] flex-shrink-0'
     });
 
-    // Album / cover art
+    // Album / cover art (image row from API — not the Spotify / stream URL)
     const artWrap = this.createElement('div', {
       className: 'w-52 h-52 rounded-2xl overflow-hidden shadow-2xl bg-slate-700 flex items-center justify-center flex-shrink-0'
     });
@@ -101,16 +102,61 @@ export class ArtworkLightbox extends Component {
       className: 'text-slate-400 text-sm'
     }, this.artwork.artist);
 
-    // Native audio player — uses the dedicated audio file URL
-    const audio = document.createElement('audio');
-    audio.src      = this.artwork.media_src || this.artwork.image || '';
-    audio.controls = true;
-    audio.className = 'w-full mt-2 rounded-xl';
+    const src = this.artwork.media_src || '';
+    const spotifySrc = spotifyEmbedSrc(src);
 
+    if (spotifySrc) {
+      const iframe = document.createElement('iframe');
+      iframe.src             = spotifySrc;
+      iframe.width            = '100%';
+      iframe.height           = '152';
+      iframe.style.border     = '0';
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('loading', 'lazy');
+      iframe.setAttribute('allow', 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture');
+      iframe.title = 'Spotify embed';
+      iframe.className = 'w-full max-w-md rounded-xl bg-black';
+
+      const open = this.createElement('a', {
+        href:        src,
+        target:      '_blank',
+        rel:         'noopener noreferrer',
+        className:   'text-sm text-green-400 hover:underline',
+      }, 'Open in Spotify');
+      wrap.appendChild(artWrap);
+      wrap.appendChild(titleEl);
+      wrap.appendChild(artistEl);
+      wrap.appendChild(iframe);
+      wrap.appendChild(open);
+      return wrap;
+    }
+
+    if (isDirectAudioUrl(src)) {
+      const audio = document.createElement('audio');
+      audio.src       = src;
+      audio.controls  = true;
+      audio.className = 'w-full mt-2 rounded-xl';
+      wrap.appendChild(artWrap);
+      wrap.appendChild(titleEl);
+      wrap.appendChild(artistEl);
+      wrap.appendChild(audio);
+      return wrap;
+    }
+
+    const hint = this.createElement('p', {
+      className: 'text-sm text-slate-400 text-center max-w-sm'
+    }, 'This link cannot be played in the browser. Open it in the app or site where it is hosted.');
+    const open = this.createElement('a', {
+      href:        src || '#',
+      target:      '_blank',
+      rel:         'noopener noreferrer',
+      className:   'text-primary hover:underline text-sm font-medium break-all px-2 text-center',
+    }, src || 'No URL');
     wrap.appendChild(artWrap);
     wrap.appendChild(titleEl);
     wrap.appendChild(artistEl);
-    wrap.appendChild(audio);
+    wrap.appendChild(hint);
+    wrap.appendChild(open);
     return wrap;
   }
 

@@ -32,6 +32,7 @@ require_once $src . '/controllers/UploadController.php';
 require_once $src . '/controllers/CommentController.php';
 require_once $src . '/controllers/BlogPostController.php';
 require_once $src . '/controllers/TagController.php';
+require_once $src . '/NewsRssAggregator.php';
 require_once $src . '/controllers/NewsController.php';
 require_once $src . '/controllers/MessageController.php';
 require_once $src . '/NotificationService.php';
