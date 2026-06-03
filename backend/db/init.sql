@@ -17,11 +17,22 @@ CREATE TABLE "profiles"
 (
     "user_id"             INT PRIMARY KEY REFERENCES "users" ("id") ON DELETE CASCADE,
     "bio"                 TEXT,
-    "profile_picture_url" VARCHAR(255),
-    "cover_photo_url"     VARCHAR(255),
+    "profile_picture_url" VARCHAR(512),
+    "cover_photo_url"     VARCHAR(512),
     "website_url"         VARCHAR(200),
     "location"            VARCHAR(100)
 );
+
+CREATE TABLE "upload_blobs"
+(
+    "id"         BIGSERIAL PRIMARY KEY,
+    "user_id"    INT          NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
+    "mime_type"  VARCHAR(100) NOT NULL,
+    "data"       BYTEA        NOT NULL,
+    "created_at" TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX "idx_upload_blobs_user" ON "upload_blobs" ("user_id");
 
 CREATE TABLE "artworks"
 (
@@ -40,7 +51,7 @@ CREATE TABLE "media"
     "id"         SERIAL PRIMARY KEY,
     "artwork_id" INT          NOT NULL REFERENCES "artworks" ("id") ON DELETE CASCADE,
     "media_type" VARCHAR(10)  NOT NULL,
-    "file_url"   VARCHAR(255) NOT NULL,
+    "file_url"   VARCHAR(512) NOT NULL,
     "order"      INT          NOT NULL DEFAULT 0
 );
 
@@ -51,7 +62,7 @@ CREATE TABLE "blog_posts"
     "title"              VARCHAR(255) NOT NULL,
     "slug"               VARCHAR(255) NOT NULL UNIQUE,
     "body"               TEXT         NOT NULL,
-    "featured_image_url" VARCHAR(255),
+    "featured_image_url" VARCHAR(512),
     "status"             VARCHAR(10)  NOT NULL DEFAULT 'draft',
     "created_at"         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     "published_at"       TIMESTAMPTZ

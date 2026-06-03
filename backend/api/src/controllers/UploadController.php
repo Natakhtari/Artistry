@@ -50,7 +50,16 @@ class UploadController
             Response::error('File type not allowed. Supported: images, video/mp4, video/webm, audio files', 422);
         }
 
-        $ext      = self::ALLOWED[$mime];
+        $ext = self::ALLOWED[$mime];
+
+        // Images → Postgres bytea (survives container redeploys). Video/audio → disk (ephemeral on free hosts).
+        if (str_starts_with($mime, 'image/')) {
+            $url = $this->storeImageBlob($userId, $mime, $file['tmp_name']);
+            if ($url !== null) {
+                Response::ok(['url' => $url, 'mime' => $mime], 'File uploaded');
+            }
+        }
+
         $filename = bin2hex(random_bytes(16)) . '.' . $ext;
         $dir      = '/var/www/html/public/uploads/' . $userId;
 
@@ -63,10 +72,40 @@ class UploadController
             Response::error('Failed to save file', 500);
         }
 
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost:8742';
-        $url    = "{$scheme}://{$host}/uploads/{$userId}/{$filename}";
+        $url = UploadUrlHelper::diskFileUrl($userId, $filename);
 
         Response::ok(['url' => $url, 'mime' => $mime], 'File uploaded');
+    }
+
+    /** @return ?string public URL or null to fall back to disk */
+    private function storeImageBlob(int $userId, string $mime, string $tmpPath): ?string
+    {
+        $bytes = @file_get_contents($tmpPath);
+        if ($bytes === false || $bytes === '') {
+            return null;
+        }
+
+        try {
+            $db   = Database::getInstance();
+            $stmt = $db->prepare(
+                'INSERT INTO upload_blobs (user_id, mime_type, data) VALUES (:uid, :mime, :data) RETURNING id'
+            );
+            $stmt->execute([
+                'uid'  => $userId,
+                'mime' => $mime,
+                'data' => $bytes,
+            ]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $id  = (int) ($row['id'] ?? 0);
+            if ($id < 1) {
+                return null;
+            }
+
+            return UploadUrlHelper::blobFileUrl($id);
+        } catch (Throwable $e) {
+            error_log('upload_blobs insert failed (run db/migrations/004_upload_blobs.sql): ' . $e->getMessage());
+
+            return null;
+        }
     }
 }

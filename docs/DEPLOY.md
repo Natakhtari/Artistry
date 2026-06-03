@@ -5,7 +5,7 @@
 1. **Push code to GitHub** — the whole `Artistry` repo (or your fork).
 2. **Neon — create project** at [neon.tech](https://neon.tech) → copy connection details (host, user, password, database name).
 3. **Neon — SQL** → open **SQL Editor** → paste entire **`backend/db/init.sql`** from the repo → **Run**.
-4. **Neon — SQL again** → paste **`backend/db/deploy_extras.sql`** → **Run** (chat tables).
+4. **Neon — SQL again** → paste **`backend/db/deploy_extras.sql`** → **Run** (chat tables, notifications, **upload_blobs** for DB‑stored images).
 5. **Render — sign up** at [render.com](https://render.com) → link GitHub.
 6. **Render — New Web Service** → pick this repo.
 7. **Render — settings:** Root directory **`backend`**, Dockerfile path **`Dockerfile.deploy`**, plan **Free**.
@@ -44,15 +44,15 @@ You get **free HTTPS subdomains** from each provider (e.g. `*.pages.dev`, `*.onr
 1. Create a project at [neon.tech](https://neon.tech).
 2. Copy the **connection string** (looks like `postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require`).
 3. In the Neon SQL editor, run **`backend/db/init.sql`** from this repo (paste full file, execute).
-4. Then run **`backend/db/deploy_extras.sql`** for direct messages, message likes, and the **`notifications`** table (in-app alerts).
+4. Then run **`backend/db/deploy_extras.sql`** for direct messages, message likes, **`notifications`**, and **`upload_blobs`** (stores uploaded **images** in Postgres so they survive API redeploys; video/audio still use disk until you add object storage).
 
 ### Supabase
 
-1. New project → **SQL** → paste and run `init.sql`, then `deploy_extras.sql`.
+1. New project → **SQL** → paste and run `init.sql`, then `deploy_extras.sql` (includes **`upload_blobs`** for image persistence).
 2. Use **Settings → Database → Connection string** (URI mode, port 5432).  
    Supabase also gives Auth/Storage; this app only needs the Postgres URL for PHP.
 
-**Note:** Seed data and large binary uploads are your choice; production usually uses smaller seeds or S3/R2 for files.
+**Note:** Seed data and large binary uploads are your choice. **New photo uploads** are stored in the **`upload_blobs`** table (see `backend/db/migrations/004_upload_blobs.sql`); URLs look like `https://YOUR-API/api/files/123`. If those links are wrong behind a reverse proxy, set **`PUBLIC_BASE_URL`** on the API (origin only, no path). Video/audio files are still written to the container disk and can disappear on free-tier redeploys unless you add R2/S3 or a persistent volume.
 
 ---
 
@@ -79,6 +79,7 @@ Render’s free web service can sleep after ~15 minutes idle (cold start ~30–6
    | `JWT_SECRET` | `openssl rand -hex 32` |
    | `CORS_ORIGIN` | Your **frontend** URL with **no** trailing slash, e.g. `https://artistry-xxx.pages.dev` |
    | `NEWS_API_KEY` | *(Optional)* [NewsAPI.org](https://newsapi.org) key — merged into **`GET /api/news`** with RSS; omit to use RSS-only (Hyperallergic, Colossal). The API host must allow **outbound HTTPS** for RSS and NewsAPI. |
+   | `PUBLIC_BASE_URL` | *(Optional)* Public origin for upload URLs, e.g. `https://artistry-api-xxxx.onrender.com` — no path, no trailing slash. Use if **`/api/files/…`** image links are built with the wrong host behind a proxy. |
 
 5. Check `Database.php` (or env usage) — if the app expects `DB_HOST` as hostname only, strip any `?sslmode=require` from host; enable SSL in PDO if required (Neon usually needs SSL).
 
@@ -183,7 +184,7 @@ GitHub Pages is `https://username.github.io/repo/` — add that exact origin to 
 
 ## Checklist
 
-- [ ] Postgres created; `init.sql` + `deploy_extras.sql` applied (includes chat + notifications)  
+- [ ] Postgres created; `init.sql` + `deploy_extras.sql` applied (includes chat, notifications, **`upload_blobs`**)  
 - [ ] API deployed; `/api/...` responds  
 - [ ] `JWT_SECRET` strong and unique  
 - [ ] `CORS_ORIGIN` = frontend URL (no trailing slash)  

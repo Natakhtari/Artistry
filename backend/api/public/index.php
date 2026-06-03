@@ -8,7 +8,6 @@ header("Access-Control-Allow-Origin: {$origin}");
 header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Content-Type: application/json; charset=UTF-8');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -28,7 +27,9 @@ require_once $src . '/controllers/FeedController.php';
 require_once $src . '/controllers/UserController.php';
 require_once $src . '/controllers/ArtworkController.php';
 require_once $src . '/controllers/LikeController.php';
+require_once $src . '/UploadUrlHelper.php';
 require_once $src . '/controllers/UploadController.php';
+require_once $src . '/controllers/PublicBlobController.php';
 require_once $src . '/controllers/CommentController.php';
 require_once $src . '/controllers/BlogPostController.php';
 require_once $src . '/controllers/TagController.php';
@@ -115,9 +116,11 @@ $router->delete('/artworks/{id}',   [$artwork_c, 'destroy'], [$auth]);
 $like_c = new LikeController();
 $router->post('/likes', [$like_c, 'toggle'], [$auth]);
 
-// File upload
+// File upload + public image bytes (DB-backed)
 $upload_c = new UploadController();
+$blob_c   = new PublicBlobController();
 $router->post('/upload', [$upload_c, 'store'], [$auth]);
+$router->get( '/files/{id}', [$blob_c, 'show']);
 
 // Comments
 $comment_c = new CommentController();

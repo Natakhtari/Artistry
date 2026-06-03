@@ -879,19 +879,31 @@ export class CreatePostModal extends Component {
       if (window.lucide) window.lucide.createIcons();
     };
 
-    if (img.complete && img.naturalWidth > 0) {
-      requestAnimationFrame(bootCropper);
-    } else {
-      img.addEventListener('load', () => requestAnimationFrame(bootCropper), { once: true });
-      img.addEventListener(
-        'error',
-        () => {
-          toast.show('Could not read this image file.', 'error');
-          this._cancelEditor();
-        },
-        { once: true }
-      );
-    }
+    const waitForCropper = (attempts = 0) => {
+      if (typeof window.Cropper === 'function') {
+        if (img.complete && img.naturalWidth > 0) {
+          requestAnimationFrame(bootCropper);
+        } else {
+          img.addEventListener('load', () => requestAnimationFrame(bootCropper), { once: true });
+          img.addEventListener(
+            'error',
+            () => {
+              toast.show('Could not read this image file.', 'error');
+              this._cancelEditor();
+            },
+            { once: true }
+          );
+        }
+        return;
+      }
+      if (attempts >= 80) {
+        toast.show('Image editor failed to load. Check your network and refresh.', 'error');
+        return;
+      }
+      setTimeout(() => waitForCropper(attempts + 1), 50);
+    };
+
+    waitForCropper();
   }
 
   _destroyCropper() {
